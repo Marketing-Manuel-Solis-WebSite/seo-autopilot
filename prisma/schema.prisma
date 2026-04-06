@@ -1,0 +1,297 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Site {
+  id        String   @id @default(cuid())
+  name      String
+  domain    String   @unique
+  url       String
+  cmsType   String?
+  cmsApiUrl String?
+  cmsApiKey String?
+  isActive        Boolean  @default(true)
+  targetCountry   String   @default("us")
+  targetLanguage  String   @default("en")
+  gscPropertyUrl  String?
+  gscCredentials  Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  audits         Audit[]
+  keywords       Keyword[]
+  rankings       Ranking[]
+  content        Content[]
+  backlinks      Backlink[]
+  fixes          Fix[]
+  alerts         Alert[]
+  competitors    Competitor[]
+  reports        Report[]
+  monitoringLogs MonitoringLog[]
+  metaVariants   MetaVariant[]
+  locations      Location[]
+}
+
+model Audit {
+  id             String    @id @default(cuid())
+  siteId         String
+  site           Site      @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  auditType      String
+  status         String
+  score          Float?
+  issuesCount    Int       @default(0)
+  criticalIssues Json?
+  warnings       Json?
+  opportunities  Json?
+  rawData        Json?
+  claudeAnalysis Json?
+  model          String?
+  createdAt      DateTime  @default(now())
+  completedAt    DateTime?
+}
+
+model Keyword {
+  id           String   @id @default(cuid())
+  siteId       String
+  site         Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  keyword      String
+  searchVolume Int?
+  difficulty   Float?
+  cpc          Float?
+  intent       String?
+  targetUrl    String?
+  isTracking   Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  rankings Ranking[]
+}
+
+model Ranking {
+  id           String   @id @default(cuid())
+  siteId       String
+  site         Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  keywordId    String?
+  keyword      Keyword? @relation(fields: [keywordId], references: [id], onDelete: SetNull)
+  keywordText  String
+  position     Int
+  previousPos  Int?
+  change       Int?
+  url          String
+  searchEngine String   @default("google")
+  country      String   @default("us")
+  device       String   @default("desktop")
+  checkedAt    DateTime @default(now())
+
+  @@index([siteId, checkedAt])
+  @@index([siteId, keywordText])
+}
+
+model Content {
+  id               String    @id @default(cuid())
+  siteId           String
+  site             Site      @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  contentType      String
+  title            String
+  slug             String?
+  targetKeyword    String
+  secondaryKws     String[]
+  body             String
+  metaTitle        String?
+  metaDescription  String?
+  schema           Json?
+  seoScore         Float?
+  readabilityScore Float?
+  wordCount        Int?
+  status           String
+  generatedBy      String
+  approvedBy       String?
+  approvedAt       DateTime?
+  publishedAt      DateTime?
+  publishedUrl     String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  internalLinksFrom InternalLink[] @relation("fromContent")
+  internalLinksTo   InternalLink[] @relation("toContent")
+
+  @@index([siteId, status])
+}
+
+model Fix {
+  id             String    @id @default(cuid())
+  siteId         String
+  site           Site      @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  fixType        String
+  priority       String
+  title          String
+  description    String
+  affectedUrl    String?
+  beforeValue    String?
+  afterValue     String?
+  implementation Json?
+  isDestructive  Boolean   @default(false)
+  status         String
+  approvedBy     String?
+  approvedAt     DateTime?
+  appliedAt      DateTime?
+  rollbackData   Json?
+  createdAt      DateTime  @default(now())
+
+  @@index([siteId, status])
+}
+
+model Backlink {
+  id              String   @id @default(cuid())
+  siteId          String
+  site            Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  sourceUrl       String
+  targetUrl       String
+  anchorText      String?
+  domainAuthority Int?
+  isDoFollow      Boolean  @default(true)
+  isActive        Boolean  @default(true)
+  firstSeen       DateTime @default(now())
+  lastSeen        DateTime @default(now())
+}
+
+model Competitor {
+  id              String    @id @default(cuid())
+  siteId          String
+  site            Site      @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  domain          String
+  visibilityScore Float?
+  commonKeywords  Int?
+  aboveUs         Int?
+  belowUs         Int?
+  lastAnalyzed    DateTime?
+  createdAt       DateTime  @default(now())
+}
+
+model Alert {
+  id         String    @id @default(cuid())
+  siteId     String
+  site       Site      @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  alertType  String
+  severity   String
+  title      String
+  message    String
+  data       Json?
+  isRead     Boolean   @default(false)
+  isResolved Boolean   @default(false)
+  resolvedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([siteId, isRead, createdAt])
+}
+
+model Report {
+  id          String   @id @default(cuid())
+  siteId      String?
+  site        Site?    @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  reportType  String
+  title       String
+  period      String
+  data        Json
+  generatedAt DateTime @default(now())
+}
+
+model MonitoringLog {
+  id         String   @id @default(cuid())
+  siteId     String
+  site       Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  runType    String
+  model      String
+  tokensIn   Int?
+  tokensOut  Int?
+  durationMs Int?
+  status     String
+  summary    Json?
+  error      String?
+  createdAt  DateTime @default(now())
+
+  @@index([siteId, createdAt])
+}
+
+model InternalLink {
+  id            String   @id @default(cuid())
+  siteId        String
+  fromContentId String
+  toContentId   String
+  anchorText    String
+  status        String   @default("pending")
+  createdAt     DateTime @default(now())
+
+  fromContent Content @relation("fromContent", fields: [fromContentId], references: [id], onDelete: Cascade)
+  toContent   Content @relation("toContent", fields: [toContentId], references: [id], onDelete: Cascade)
+
+  @@index([siteId, status])
+}
+
+model TopicMap {
+  id        String   @id @default(cuid())
+  siteId    String
+  data      Json
+  createdAt DateTime @default(now())
+
+  @@index([siteId, createdAt])
+}
+
+model MetaVariant {
+  id           String    @id @default(cuid())
+  siteId       String
+  site         Site      @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  contentId    String?
+  url          String
+  keyword      String
+  variantA     String
+  variantB     String
+  impressionsA Int       @default(0)
+  clicksA      Int       @default(0)
+  impressionsB Int       @default(0)
+  clicksB      Int       @default(0)
+  winner       String?
+  status       String    @default("testing")
+  startedAt    DateTime  @default(now())
+  completedAt  DateTime?
+
+  @@index([siteId, status])
+}
+
+model Location {
+  id           String   @id @default(cuid())
+  siteId       String
+  site         Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  name         String
+  address      String
+  city         String
+  state        String
+  zip          String
+  phone        String
+  email        String?
+  businessType String
+  gbpPlaceId   String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  localRankings LocalRanking[]
+
+  @@index([siteId])
+}
+
+model LocalRanking {
+  id          String   @id @default(cuid())
+  locationId  String
+  location    Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  keyword     String
+  position    Int
+  mapPosition Int?
+  checkedAt   DateTime @default(now())
+
+  @@index([locationId, checkedAt])
+}

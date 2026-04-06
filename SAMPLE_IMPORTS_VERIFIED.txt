@@ -1,0 +1,73 @@
+═══════════════════════════════════════════════════════════════════════════════
+                    SAMPLE OF VERIFIED IMPORTS
+═══════════════════════════════════════════════════════════════════════════════
+
+The following is a representative sample of imports that were verified to exist:
+
+PATH ALIAS IMPORTS (@/):
+───────────────────────────────────────────────────────────────────────────────
+
+✓ app/(dashboard)/dashboard/page.tsx:1
+  import { prisma } from '@/lib/prisma'
+  Target: lib/prisma.ts
+
+✓ app/(dashboard)/dashboard/page.tsx:2
+  import GlobalMetricsBar from '@/components/dashboard/GlobalMetricsBar'
+  Target: components/dashboard/GlobalMetricsBar.tsx
+
+✓ app/api/claude/analyze/route.ts:3
+  import { claudeOpusDeepAnalysis } from '@/lib/claude/opus'
+  Target: lib/claude/opus.ts
+
+✓ components/dashboard/SiteHealthGrid.tsx:4
+  import { getScoreColor, getScoreLabel } from '@/lib/utils/seo-score'
+  Target: lib/utils/seo-score.ts
+
+✓ components/ui/card.tsx:3
+  import { cn } from "@/lib/utils"
+  Target: lib/utils.ts
+
+RELATIVE IMPORTS (./):
+───────────────────────────────────────────────────────────────────────────────
+
+✓ components/alerts/AlertCenter.tsx:9
+  import AlertFilters from './AlertFilters'
+  Target: components/alerts/AlertFilters.tsx
+
+✓ components/content/ContentGenerator.tsx:10
+  import ContentApproval from './ContentApproval'
+  Target: components/content/ContentApproval.tsx
+
+✓ components/fixes/FixQueue.tsx:4
+  import FixCard from './FixCard'
+  Target: components/fixes/FixCard.tsx
+
+✓ lib/claude/opus.ts:1
+  import { anthropic, MODELS } from './client'
+  Target: lib/claude/client.ts
+
+✓ lib/claude/opus.ts:2
+  import { buildAuditAnalysisPrompt } from './prompts/audit-analysis'
+  Target: lib/claude/prompts/audit-analysis.ts
+
+PARENT DIRECTORY IMPORTS (../):
+───────────────────────────────────────────────────────────────────────────────
+
+✓ lib/generated/prisma/internal/class.ts:14
+  import * as runtime from "@prisma/client/runtime/client"
+  [External package - not checked]
+
+✓ lib/generated/prisma/models/Alert.ts:12
+  import type * as $Enums from "../enums"
+  Target: lib/generated/prisma/enums.ts
+
+✓ lib/generated/prisma/models/Site.ts:13
+  import type * as Prisma from "../internal/prismaNamespace"
+  Target: lib/generated/prisma/internal/prismaNamespace.ts
+
+═══════════════════════════════════════════════════════════════════════════════
+
+All 266 local imports verified successfully. Every import path correctly
+resolves to an existing file in the project.
+
+═══════════════════════════════════════════════════════════════════════════════

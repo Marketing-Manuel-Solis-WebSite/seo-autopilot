@@ -1,0 +1,94 @@
+'use client'
+
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Check, X } from 'lucide-react'
+
+interface ContentApprovalProps {
+  content: {
+    title: string
+    metaTitle: string
+    metaDescription: string
+    body: string
+    seoScore: number
+    slug: string
+    contentId?: string
+  }
+  siteId: string
+}
+
+export default function ContentApproval({ content, siteId }: ContentApprovalProps) {
+  const [status, setStatus] = useState<'idle' | 'approving' | 'approved' | 'rejected'>('idle')
+
+  async function handleApprove() {
+    setStatus('approving')
+    await fetch('/api/content/approve', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contentId: content.contentId, approved: true }),
+    })
+    setStatus('approved')
+  }
+
+  async function handleReject() {
+    await fetch('/api/content/approve', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contentId: content.contentId, approved: false }),
+    })
+    setStatus('rejected')
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg">Revisión de contenido</CardTitle>
+          <Badge className="font-mono">SEO: {content.seoScore}/100</Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="rounded-md border p-3">
+          <p className="text-xs text-muted-foreground">Meta Title</p>
+          <p className="text-sm font-medium">{content.metaTitle}</p>
+        </div>
+        <div className="rounded-md border p-3">
+          <p className="text-xs text-muted-foreground">Meta Description</p>
+          <p className="text-sm">{content.metaDescription}</p>
+        </div>
+        <div className="rounded-md border p-3">
+          <p className="text-xs text-muted-foreground">Slug</p>
+          <p className="text-sm font-mono">/{content.slug}</p>
+        </div>
+        <div className="rounded-md border p-4">
+          <p className="text-xs text-muted-foreground mb-2">Contenido</p>
+          <div
+            className="prose prose-sm dark:prose-invert max-w-none"
+            dangerouslySetInnerHTML={{ __html: content.body }}
+          />
+        </div>
+
+        {status === 'idle' && (
+          <div className="flex gap-3">
+            <Button onClick={handleApprove} className="gap-2">
+              <Check className="h-4 w-4" />
+              Aprobar y publicar
+            </Button>
+            <Button variant="destructive" onClick={handleReject} className="gap-2">
+              <X className="h-4 w-4" />
+              Rechazar
+            </Button>
+          </div>
+        )}
+        {status === 'approved' && (
+          <Badge className="bg-green-500/10 text-green-500">Contenido aprobado</Badge>
+        )}
+        {status === 'rejected' && (
+          <Badge className="bg-red-500/10 text-red-500">Contenido rechazado</Badge>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
