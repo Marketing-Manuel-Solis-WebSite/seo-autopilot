@@ -16,6 +16,7 @@ const PUBLIC_PATHS = ['/', '/login']
 function isPublicPath(pathname: string): boolean {
   if (PUBLIC_PATHS.includes(pathname)) return true
   if (pathname.startsWith('/api/cron/')) return true
+  if (pathname.startsWith('/api/auth/gsc')) return true
   return false
 }
 
