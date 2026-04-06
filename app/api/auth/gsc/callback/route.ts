@@ -4,6 +4,14 @@ import { prisma } from '@/lib/prisma'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
+
+  // TEMP DEBUG — remove after diagnosing
+  console.log('GSC Callback received:', {
+    code: searchParams.get('code')?.substring(0, 20),
+    state: searchParams.get('state'),
+    error: searchParams.get('error'),
+  })
+
   const code = searchParams.get('code')
   const siteId = searchParams.get('state')
   const appUrl = process.env.APP_URL ?? ''
