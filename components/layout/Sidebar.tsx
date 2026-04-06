@@ -66,7 +66,7 @@ export default function Sidebar({ alertCount = 0, fixCount = 0 }: SidebarProps) 
               )}
             </Link>
           )
-        })}
+        })} 
       </nav>
 
       {fixCount > 0 && (
