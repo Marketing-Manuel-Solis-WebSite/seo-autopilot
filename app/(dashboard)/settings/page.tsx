@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import PageHeader from '@/components/layout/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -17,10 +17,12 @@ export default function SettingsPage() {
   const [locLoading, setLocLoading] = useState(false)
   const [locMessage, setLocMessage] = useState('')
   const [gscSiteId, setGscSiteId] = useState('')
+  const [gscResult, setGscResult] = useState<string | null>(null)
 
-  // Check for GSC callback result
-  const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
-  const gscResult = params?.get('gsc')
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    setGscResult(params.get('gsc'))
+  }, [])
 
   async function handleAddSite(e: React.FormEvent) {
     e.preventDefault()
