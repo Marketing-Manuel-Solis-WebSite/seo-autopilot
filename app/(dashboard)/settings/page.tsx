@@ -104,9 +104,9 @@ export default function SettingsPage() {
                 <SelectContent>
                   <SelectItem value="wordpress">WordPress</SelectItem>
                   <SelectItem value="webflow">Webflow</SelectItem>
+                  <SelectItem value="github">GitHub (Next.js / static)</SelectItem>
                   <SelectItem value="shopify">Shopify</SelectItem>
                   <SelectItem value="custom">Custom</SelectItem>
-                  <SelectItem value="nextjs">Next.js</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -114,21 +114,32 @@ export default function SettingsPage() {
               <>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">
-                    {newSite.cmsType === 'webflow' ? 'Collection ID' : 'CMS API URL'}
+                    {newSite.cmsType === 'github' ? 'GitHub repo (org/repo-name)' : newSite.cmsType === 'webflow' ? 'Collection ID' : 'CMS API URL'}
                   </label>
                   <Input
                     value={newSite.cmsApiUrl}
                     onChange={e => setNewSite(s => ({ ...s, cmsApiUrl: e.target.value }))}
-                    placeholder={newSite.cmsType === 'wordpress' ? 'https://ejemplo.com' : newSite.cmsType === 'webflow' ? 'collection_id_here' : 'https://api.ejemplo.com'}
+                    placeholder={
+                      newSite.cmsType === 'github' ? 'LawOfficesManuelSolis/manuelsolis-com'
+                      : newSite.cmsType === 'wordpress' ? 'https://ejemplo.com'
+                      : newSite.cmsType === 'webflow' ? 'collection_id_here'
+                      : 'https://api.ejemplo.com'
+                    }
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">CMS API Key</label>
+                  <label className="text-sm font-medium">
+                    {newSite.cmsType === 'github' ? 'Blog folder path' : 'CMS API Key'}
+                  </label>
                   <Input
-                    type="password"
+                    type={newSite.cmsType === 'github' ? 'text' : 'password'}
                     value={newSite.cmsApiKey}
                     onChange={e => setNewSite(s => ({ ...s, cmsApiKey: e.target.value }))}
-                    placeholder={newSite.cmsType === 'wordpress' ? 'user:application_password' : 'Bearer token / API key'}
+                    placeholder={
+                      newSite.cmsType === 'github' ? 'app/blog'
+                      : newSite.cmsType === 'wordpress' ? 'user:application_password'
+                      : 'Bearer token / API key'
+                    }
                   />
                 </div>
               </>

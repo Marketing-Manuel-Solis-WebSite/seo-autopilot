@@ -37,6 +37,14 @@ export async function GET(
     } else if (site.cmsType === 'webflow') {
       testUrl = `https://api.webflow.com/v2/collections/${site.cmsApiUrl}`
       headers = { Authorization: `Bearer ${site.cmsApiKey}` }
+    } else if (site.cmsType === 'github') {
+      const [owner, repo] = site.cmsApiUrl.split('/')
+      const token = process.env.GITHUB_TOKEN
+      if (!token) {
+        return NextResponse.json({ connected: false, error: 'GITHUB_TOKEN env var is not set' })
+      }
+      testUrl = `https://api.github.com/repos/${owner}/${repo}`
+      headers = { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' }
     } else {
       testUrl = `${site.cmsApiUrl}/posts?limit=1`
       headers = { Authorization: `Bearer ${site.cmsApiKey}` }
