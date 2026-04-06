@@ -16,15 +16,33 @@ export default function SettingsPage() {
   const [newLocation, setNewLocation] = useState({ siteId: '', name: '', address: '', city: '', state: '', zip: '', phone: '', email: '', businessType: 'LegalService', gbpPlaceId: '' })
   const [locLoading, setLocLoading] = useState(false)
   const [locMessage, setLocMessage] = useState('')
-  const [gscSiteId, setGscSiteId] = useState('')
   const [gscResult, setGscResult] = useState<string | null>(null)
-  const [sites, setSites] = useState<{ id: string; name: string; domain: string }[]>([])
+  const [sites, setSites] = useState<{ id: string; name: string; domain: string; gscPropertyUrl: string | null; gscCredentials: unknown }[]>([])
+  const [disconnecting, setDisconnecting] = useState<string | null>(null)
+
+  function loadSites() {
+    fetch('/api/sites').then(r => r.ok ? r.json() : []).then(setSites).catch(() => {})
+  }
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     setGscResult(params.get('gsc'))
-    fetch('/api/sites').then(r => r.ok ? r.json() : []).then(setSites).catch(() => {})
+    loadSites()
   }, [])
+
+  async function handleDisconnectGSC(siteId: string) {
+    setDisconnecting(siteId)
+    try {
+      await fetch('/api/auth/gsc/disconnect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ siteId }),
+      })
+      loadSites()
+    } finally {
+      setDisconnecting(null)
+    }
+  }
 
   async function handleAddSite(e: React.FormEvent) {
     e.preventDefault()
@@ -206,33 +224,52 @@ export default function SettingsPage() {
         <CardHeader>
           <CardTitle className="text-base">Google Search Console</CardTitle>
         </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground mb-3">
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
             Conecta GSC para habilitar monitoreo de rankings, CTR Optimizer y A/B testing de meta titles.
-            GSC debe conectarse por cada sitio individualmente.
           </p>
-          {gscResult === 'connected' && <p className="mb-3 text-sm text-green-500">GSC conectado exitosamente.</p>}
-          {gscResult === 'error' && <p className="mb-3 text-sm text-red-500">Error al conectar GSC. Intenta de nuevo.</p>}
-          <div className="flex gap-2 items-end">
-            <div className="flex-1 space-y-2">
-              <label className="text-sm font-medium">Sitio para conectar</label>
-              <Select value={gscSiteId} onValueChange={setGscSiteId}>
-                <SelectTrigger><SelectValue placeholder="Selecciona un sitio" /></SelectTrigger>
-                <SelectContent>
-                  {sites.map(s => (
-                    <SelectItem key={s.id} value={s.id}>{s.name} ({s.domain})</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button
-              variant="outline"
-              disabled={!gscSiteId}
-              onClick={() => window.location.href = `/api/auth/gsc?siteId=${gscSiteId}`}
-            >
-              Conectar Google Search Console
-            </Button>
-          </div>
+          {gscResult === 'connected' && <p className="text-sm text-green-500">GSC conectado exitosamente.</p>}
+          {gscResult === 'error' && <p className="text-sm text-red-500">Error al conectar GSC. Intenta de nuevo.</p>}
+
+          {sites.length === 0 && (
+            <p className="text-sm text-muted-foreground">No hay sitios configurados. Agrega uno arriba primero.</p>
+          )}
+
+          {sites.map(s => {
+            const isConnected = !!s.gscCredentials && !!s.gscPropertyUrl
+            return (
+              <div key={s.id} className="flex items-center justify-between rounded-md border p-3">
+                <div className="flex items-center gap-3">
+                  <div className={`h-2.5 w-2.5 rounded-full ${isConnected ? 'bg-green-500' : 'bg-gray-400'}`} />
+                  <div>
+                    <p className="text-sm font-medium">{s.name} ({s.domain})</p>
+                    {isConnected
+                      ? <p className="text-xs text-green-600">Conectado: {s.gscPropertyUrl}</p>
+                      : <p className="text-xs text-muted-foreground">No conectado</p>
+                    }
+                  </div>
+                </div>
+                {isConnected ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={disconnecting === s.id}
+                    onClick={() => handleDisconnectGSC(s.id)}
+                  >
+                    {disconnecting === s.id ? 'Desconectando...' : 'Desconectar'}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.location.href = `/api/auth/gsc?siteId=${s.id}`}
+                  >
+                    Conectar GSC
+                  </Button>
+                )}
+              </div>
+            )
+          })}
         </CardContent>
       </Card>
 
