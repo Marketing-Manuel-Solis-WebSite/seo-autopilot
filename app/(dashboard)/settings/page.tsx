@@ -18,10 +18,12 @@ export default function SettingsPage() {
   const [locMessage, setLocMessage] = useState('')
   const [gscSiteId, setGscSiteId] = useState('')
   const [gscResult, setGscResult] = useState<string | null>(null)
+  const [sites, setSites] = useState<{ id: string; name: string; domain: string }[]>([])
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     setGscResult(params.get('gsc'))
+    fetch('/api/sites').then(r => r.ok ? r.json() : []).then(setSites).catch(() => {})
   }, [])
 
   async function handleAddSite(e: React.FormEvent) {
@@ -213,8 +215,15 @@ export default function SettingsPage() {
           {gscResult === 'error' && <p className="mb-3 text-sm text-red-500">Error al conectar GSC. Intenta de nuevo.</p>}
           <div className="flex gap-2 items-end">
             <div className="flex-1 space-y-2">
-              <label className="text-sm font-medium">Site ID para conectar</label>
-              <Input value={gscSiteId} onChange={e => setGscSiteId(e.target.value)} placeholder="ID del sitio" />
+              <label className="text-sm font-medium">Sitio para conectar</label>
+              <Select value={gscSiteId} onValueChange={setGscSiteId}>
+                <SelectTrigger><SelectValue placeholder="Selecciona un sitio" /></SelectTrigger>
+                <SelectContent>
+                  {sites.map(s => (
+                    <SelectItem key={s.id} value={s.id}>{s.name} ({s.domain})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <Button
               variant="outline"
