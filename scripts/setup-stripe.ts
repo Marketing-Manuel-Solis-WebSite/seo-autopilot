@@ -1,0 +1,185 @@
+/**
+ * Setup script for Stripe products, prices, and webhook.
+ *
+ * Usage:
+ *   npx tsx scripts/setup-stripe.ts
+ *
+ * Prerequisites:
+ *   - STRIPE_SECRET_KEY must be set in .env.local
+ *   - APP_URL must be set in .env.local
+ *
+ * What it does:
+ *   1. Creates 3 products (Starter, Pro, Agency) in Stripe
+ *   2. Creates recurring monthly prices for each
+ *   3. Creates a webhook endpoint for your APP_URL
+ *   4. Prints the env vars to paste into .env.local
+ */
+
+import 'dotenv/config'
+import Stripe from 'stripe'
+import * as fs from 'fs'
+import * as path from 'path'
+
+const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY
+const APP_URL = process.env.APP_URL || 'http://localhost:3000'
+
+if (!STRIPE_SECRET_KEY || STRIPE_SECRET_KEY.includes('REPLACE_ME')) {
+  console.error('\n❌ STRIPE_SECRET_KEY not configured.')
+  console.error('   1. Go to https://dashboard.stripe.com/apikeys')
+  console.error('   2. Copy your Secret key (starts with sk_test_ or sk_live_)')
+  console.error('   3. Set it in .env.local as STRIPE_SECRET_KEY=sk_test_...\n')
+  process.exit(1)
+}
+
+const stripe = new Stripe(STRIPE_SECRET_KEY, { typescript: true })
+
+const PLANS = [
+  {
+    key: 'STARTER',
+    name: 'Solis SEO — Starter',
+    description: '1 sitio, 50 keywords, auditorías básicas, monitoreo de rankings, alertas por email',
+    price: 4900, // cents
+  },
+  {
+    key: 'PRO',
+    name: 'Solis SEO — Pro',
+    description: '5 sitios, 250 keywords, Claude Opus auditorías, Content Studio, A/B testing, análisis de competidores',
+    price: 9900,
+  },
+  {
+    key: 'AGENCY',
+    name: 'Solis SEO — Agency',
+    description: '20 sitios, 1000 keywords, contenido ilimitado, multi-CMS, Local SEO, soporte prioritario',
+    price: 24900,
+  },
+]
+
+const WEBHOOK_EVENTS: Stripe.WebhookEndpointCreateParams.EnabledEvent[] = [
+  'checkout.session.completed',
+  'customer.subscription.updated',
+  'customer.subscription.deleted',
+  'invoice.payment_failed',
+  'invoice.payment_succeeded',
+]
+
+async function main() {
+  console.log('\n🚀 Solis SEO — Stripe Setup\n')
+  console.log(`   Mode: ${STRIPE_SECRET_KEY!.startsWith('sk_live_') ? '🔴 LIVE' : '🟢 TEST'}`)
+  console.log(`   App URL: ${APP_URL}\n`)
+
+  // Step 1: Create products and prices
+  const priceIds: Record<string, string> = {}
+
+  for (const plan of PLANS) {
+    console.log(`📦 Creating product: ${plan.name}...`)
+
+    const product = await stripe.products.create({
+      name: plan.name,
+      description: plan.description,
+      metadata: { app: 'solis-seo-autopilot', plan: plan.key.toLowerCase() },
+    })
+
+    const price = await stripe.prices.create({
+      product: product.id,
+      unit_amount: plan.price,
+      currency: 'usd',
+      recurring: { interval: 'month' },
+      metadata: { plan: plan.key.toLowerCase() },
+    })
+
+    priceIds[plan.key] = price.id
+    console.log(`   ✅ ${plan.name}: ${price.id} ($${plan.price / 100}/mo)\n`)
+  }
+
+  // Step 2: Create webhook endpoint
+  console.log('🔗 Creating webhook endpoint...')
+  const webhookUrl = `${APP_URL}/api/stripe/webhook`
+
+  let webhookSecret = ''
+  try {
+    const webhook = await stripe.webhookEndpoints.create({
+      url: webhookUrl,
+      enabled_events: WEBHOOK_EVENTS,
+      description: 'Solis SEO Autopilot — subscription events',
+      metadata: { app: 'solis-seo-autopilot' },
+    })
+    webhookSecret = webhook.secret || ''
+    console.log(`   ✅ Webhook: ${webhookUrl}`)
+    if (webhookSecret) {
+      console.log(`   ✅ Secret: ${webhookSecret}\n`)
+    } else {
+      console.log(`   ⚠️  Secret not returned — grab it from the Stripe Dashboard\n`)
+    }
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.log(`   ⚠️  Webhook creation skipped: ${msg}`)
+    console.log(`   → Create manually at https://dashboard.stripe.com/webhooks\n`)
+  }
+
+  // Step 3: Create billing portal configuration
+  console.log('🏦 Creating billing portal configuration...')
+  try {
+    await stripe.billingPortal.configurations.create({
+      business_profile: {
+        headline: 'Solis SEO — Gestiona tu suscripción',
+      },
+      features: {
+        subscription_cancel: { enabled: true, mode: 'at_period_end' },
+        subscription_update: {
+          enabled: true,
+          default_allowed_updates: ['price'],
+          products: PLANS.map(plan => ({
+            product: (priceIds[plan.key] ? priceIds[plan.key] : ''),
+            prices: [priceIds[plan.key]],
+          })).filter(p => p.prices[0]),
+        },
+        payment_method_update: { enabled: true },
+        invoice_history: { enabled: true },
+      },
+    })
+    console.log('   ✅ Billing portal configured\n')
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.log(`   ⚠️  Portal config skipped: ${msg}\n`)
+  }
+
+  // Step 4: Output env vars
+  const envBlock = [
+    '',
+    '# Stripe — Generated by scripts/setup-stripe.ts',
+    `STRIPE_PRICE_STARTER=${priceIds.STARTER}`,
+    `STRIPE_PRICE_PRO=${priceIds.PRO}`,
+    `STRIPE_PRICE_AGENCY=${priceIds.AGENCY}`,
+    webhookSecret ? `STRIPE_WEBHOOK_SECRET=${webhookSecret}` : '# STRIPE_WEBHOOK_SECRET=whsec_... (grab from Stripe Dashboard)',
+  ].join('\n')
+
+  console.log('━'.repeat(50))
+  console.log('📋 Add these to your .env.local:\n')
+  console.log(envBlock)
+  console.log('\n' + '━'.repeat(50))
+
+  // Step 5: Auto-update .env.local
+  const envPath = path.resolve(__dirname, '..', '.env.local')
+  try {
+    let envContent = fs.readFileSync(envPath, 'utf-8')
+
+    envContent = envContent.replace(/STRIPE_PRICE_STARTER=.*/g, `STRIPE_PRICE_STARTER=${priceIds.STARTER}`)
+    envContent = envContent.replace(/STRIPE_PRICE_PRO=.*/g, `STRIPE_PRICE_PRO=${priceIds.PRO}`)
+    envContent = envContent.replace(/STRIPE_PRICE_AGENCY=.*/g, `STRIPE_PRICE_AGENCY=${priceIds.AGENCY}`)
+    if (webhookSecret) {
+      envContent = envContent.replace(/STRIPE_WEBHOOK_SECRET=.*/g, `STRIPE_WEBHOOK_SECRET=${webhookSecret}`)
+    }
+
+    fs.writeFileSync(envPath, envContent)
+    console.log('\n✅ .env.local updated automatically!')
+  } catch {
+    console.log('\n⚠️  Could not auto-update .env.local — copy the values above manually.')
+  }
+
+  console.log('\n🎉 Stripe setup complete!\n')
+}
+
+main().catch(err => {
+  console.error('❌ Setup failed:', err.message)
+  process.exit(1)
+})

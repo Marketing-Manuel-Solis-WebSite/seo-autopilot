@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "setup-stripe": "npx tsx scripts/setup-stripe.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
@@ -31,6 +32,7 @@
     "recharts": "^3.8.1",
     "resend": "^6.9.4",
     "shadcn": "^4.1.1",
+    "stripe": "^22.0.1",
     "tailwind-merge": "^3.5.0"
   },
   "devDependencies": {

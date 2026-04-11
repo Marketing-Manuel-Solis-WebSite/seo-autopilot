@@ -263,6 +263,20 @@ model MetaVariant {
   @@index([siteId, status])
 }
 
+model Subscription {
+  id                 String    @id @default(cuid())
+  stripeCustomerId   String    @unique
+  stripeSubscriptionId String? @unique
+  stripePriceId      String?
+  plan               String    @default("free")
+  status             String    @default("inactive")
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+  cancelAtPeriodEnd  Boolean   @default(false)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+}
+
 model Location {
   id           String   @id @default(cuid())
   siteId       String

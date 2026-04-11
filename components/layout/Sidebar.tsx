@@ -11,6 +11,7 @@ import {
   Settings,
   Shield,
   Zap,
+  CreditCard,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -26,6 +27,7 @@ const navItems = [
   { href: '/content', label: 'Content Studio', icon: FileText },
   { href: '/alerts', label: 'Alertas', icon: Bell, countKey: 'alerts' as const },
   { href: '/reports', label: 'Reportes', icon: BarChart3 },
+  { href: '/billing', label: 'Facturación', icon: CreditCard },
   { href: '/settings', label: 'Configuración', icon: Settings },
 ]
 
