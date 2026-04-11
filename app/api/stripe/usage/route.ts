@@ -8,7 +8,8 @@ export async function GET() {
     ])
 
     return Response.json({
-      plan: subscription.plan,
+      tier: subscription.tier,
+      monthlyAmount: subscription.monthlyAmount,
       status: subscription.status,
       currentPeriodEnd: subscription.currentPeriodEnd,
       cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
@@ -18,7 +19,7 @@ export async function GET() {
   } catch (error) {
     console.error('[Stripe Usage]', error)
     return Response.json(
-      { plan: 'free', status: 'inactive', limits: { sites: 1, keywords: 10 }, usage: { sites: 0, keywords: 0 } },
+      { tier: 'Gratis', monthlyAmount: 0, status: 'inactive', limits: { sites: 1, keywords: 10 }, usage: { sites: 0, keywords: 0 } },
     )
   }
 }

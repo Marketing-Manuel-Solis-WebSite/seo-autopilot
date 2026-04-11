@@ -31,12 +31,12 @@ export async function POST(request: Request) {
   const { error } = await requireAuth()
   if (error) return error
 
-  const { allowed, current, limit, plan } = await checkLimit('sites')
+  const { allowed, current, limit, tier } = await checkLimit('sites')
   if (!allowed) {
     return NextResponse.json(
       {
         error: 'Limite de sitios alcanzado',
-        message: `Tu plan ${plan} permite ${limit} sitio(s). Actualmente tienes ${current}. Actualiza tu plan en /billing.`,
+        message: `Tu nivel ${tier} permite ${limit} sitio(s). Actualmente tienes ${current}. Actualiza tu suscripcion en /billing.`,
       },
       { status: 403 },
     )

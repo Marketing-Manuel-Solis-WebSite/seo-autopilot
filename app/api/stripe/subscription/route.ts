@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import { PLANS, PlanKey } from '@/lib/stripe/client'
+import { getLimitsForAmount, getTierLabel } from '@/lib/stripe/client'
 
 export async function GET() {
   try {
@@ -7,26 +7,28 @@ export async function GET() {
 
     if (!subscription) {
       return Response.json({
-        plan: 'free',
+        tier: 'Gratis',
+        monthlyAmount: 0,
         status: 'inactive',
         limits: { sites: 1, keywords: 10 },
       })
     }
 
-    const planKey = subscription.plan as PlanKey
-    const planConfig = PLANS[planKey]
+    const amount = subscription.monthlyAmount ?? 0
 
     return Response.json({
-      plan: subscription.plan,
+      tier: getTierLabel(amount),
+      monthlyAmount: amount,
       status: subscription.status,
       currentPeriodEnd: subscription.currentPeriodEnd,
       cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
-      limits: planConfig?.limits || { sites: 1, keywords: 10 },
+      limits: getLimitsForAmount(amount),
     })
   } catch (error) {
     console.error('[Stripe Subscription]', error)
     return Response.json({
-      plan: 'free',
+      tier: 'Gratis',
+      monthlyAmount: 0,
       status: 'inactive',
       limits: { sites: 1, keywords: 10 },
     })

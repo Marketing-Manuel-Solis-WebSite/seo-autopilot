@@ -1,8 +1,9 @@
 import { prisma } from '@/lib/prisma'
-import { PLANS, PlanKey } from './client'
+import { getLimitsForAmount, getTierLabel } from './client'
 
 export interface SubscriptionStatus {
-  plan: PlanKey | 'free'
+  tier: string
+  monthlyAmount: number
   status: 'active' | 'past_due' | 'inactive' | 'cancelled'
   limits: { sites: number; keywords: number }
   currentPeriodEnd: Date | null
@@ -17,27 +18,29 @@ export async function getSubscription(): Promise<SubscriptionStatus> {
 
     if (!sub || sub.status !== 'active') {
       return {
-        plan: 'free',
-        status: sub?.status as SubscriptionStatus['status'] || 'inactive',
+        tier: 'Gratis',
+        monthlyAmount: 0,
+        status: (sub?.status as SubscriptionStatus['status']) || 'inactive',
         limits: FREE_LIMITS,
         currentPeriodEnd: null,
         cancelAtPeriodEnd: false,
       }
     }
 
-    const planKey = sub.plan as PlanKey
-    const planConfig = PLANS[planKey]
+    const amount = sub.monthlyAmount ?? 0
 
     return {
-      plan: planKey,
+      tier: getTierLabel(amount),
+      monthlyAmount: amount,
       status: 'active',
-      limits: planConfig?.limits || FREE_LIMITS,
+      limits: getLimitsForAmount(amount),
       currentPeriodEnd: sub.currentPeriodEnd,
       cancelAtPeriodEnd: sub.cancelAtPeriodEnd,
     }
   } catch {
     return {
-      plan: 'free',
+      tier: 'Gratis',
+      monthlyAmount: 0,
       status: 'inactive',
       limits: FREE_LIMITS,
       currentPeriodEnd: null,
@@ -58,7 +61,7 @@ export async function checkLimit(resource: 'sites' | 'keywords'): Promise<{
   allowed: boolean
   current: number
   limit: number
-  plan: string
+  tier: string
 }> {
   const [subscription, usage] = await Promise.all([
     getSubscription(),
@@ -72,6 +75,6 @@ export async function checkLimit(resource: 'sites' | 'keywords'): Promise<{
     allowed: current < limit,
     current,
     limit,
-    plan: subscription.plan,
+    tier: subscription.tier,
   }
 }

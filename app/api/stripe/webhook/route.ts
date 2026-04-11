@@ -3,11 +3,14 @@ import { stripe } from '@/lib/stripe/client'
 import { prisma } from '@/lib/prisma'
 import Stripe from 'stripe'
 
-function getSubscriptionPeriod(sub: Stripe.Subscription) {
+function getSubscriptionDetails(sub: Stripe.Subscription) {
   const item = sub.items.data[0]
   return {
     start: item ? new Date(item.current_period_start * 1000) : new Date(),
     end: item ? new Date(item.current_period_end * 1000) : new Date(),
+    quantity: item?.quantity ?? 0,
+    itemId: item?.id ?? null,
+    priceId: item?.price.id ?? null,
   }
 }
 
@@ -45,28 +48,29 @@ export async function POST(request: NextRequest) {
             : session.customer.id
 
           const stripeSubscription = await stripe().subscriptions.retrieve(subscriptionId)
-          const priceId = stripeSubscription.items.data[0]?.price.id
-          const period = getSubscriptionPeriod(stripeSubscription)
+          const details = getSubscriptionDetails(stripeSubscription)
 
           await prisma.subscription.upsert({
             where: { stripeCustomerId: customerId },
             update: {
               stripeSubscriptionId: subscriptionId,
-              stripePriceId: priceId,
-              plan: session.metadata?.plan || 'starter',
+              stripeItemId: details.itemId,
+              stripePriceId: details.priceId,
+              monthlyAmount: details.quantity,
               status: 'active',
-              currentPeriodStart: period.start,
-              currentPeriodEnd: period.end,
+              currentPeriodStart: details.start,
+              currentPeriodEnd: details.end,
               cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end,
             },
             create: {
               stripeCustomerId: customerId,
               stripeSubscriptionId: subscriptionId,
-              stripePriceId: priceId,
-              plan: session.metadata?.plan || 'starter',
+              stripeItemId: details.itemId,
+              stripePriceId: details.priceId,
+              monthlyAmount: details.quantity,
               status: 'active',
-              currentPeriodStart: period.start,
-              currentPeriodEnd: period.end,
+              currentPeriodStart: details.start,
+              currentPeriodEnd: details.end,
               cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end,
             },
           })
@@ -77,7 +81,7 @@ export async function POST(request: NextRequest) {
       case 'customer.subscription.updated': {
         const sub = event.data.object as Stripe.Subscription
         const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer.id
-        const period = getSubscriptionPeriod(sub)
+        const details = getSubscriptionDetails(sub)
 
         const status = sub.status === 'active' || sub.status === 'trialing'
           ? 'active'
@@ -89,9 +93,11 @@ export async function POST(request: NextRequest) {
           where: { stripeCustomerId: customerId },
           data: {
             status,
-            stripePriceId: sub.items.data[0]?.price.id,
-            currentPeriodStart: period.start,
-            currentPeriodEnd: period.end,
+            stripeItemId: details.itemId,
+            stripePriceId: details.priceId,
+            monthlyAmount: details.quantity,
+            currentPeriodStart: details.start,
+            currentPeriodEnd: details.end,
             cancelAtPeriodEnd: sub.cancel_at_period_end,
           },
         })
@@ -106,8 +112,9 @@ export async function POST(request: NextRequest) {
           where: { stripeCustomerId: customerId },
           data: {
             status: 'cancelled',
-            plan: 'free',
+            monthlyAmount: 0,
             stripeSubscriptionId: null,
+            stripeItemId: null,
             stripePriceId: null,
             cancelAtPeriodEnd: false,
           },

@@ -35,12 +35,12 @@ export async function POST(
 
   const { siteId } = await params
 
-  const { allowed, current, limit, plan } = await checkLimit('keywords')
+  const { allowed, current, limit, tier } = await checkLimit('keywords')
   if (!allowed) {
     return NextResponse.json(
       {
         error: 'Limite de keywords alcanzado',
-        message: `Tu plan ${plan} permite ${limit} keywords. Actualmente tienes ${current}. Actualiza tu plan en /billing.`,
+        message: `Tu nivel ${tier} permite ${limit} keywords. Actualmente tienes ${current}. Actualiza tu suscripcion en /billing.`,
       },
       { status: 403 },
     )
