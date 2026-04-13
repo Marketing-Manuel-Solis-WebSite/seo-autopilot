@@ -5,11 +5,12 @@ import PageHeader from '@/components/layout/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { CreditCard, Settings } from 'lucide-react'
+import { CreditCard, Settings, XCircle, RotateCcw } from 'lucide-react'
 
 interface BillingData {
   status: string
   currentPeriodEnd?: string
+  cancelAtPeriodEnd?: boolean
 }
 
 export default function BillingPage() {
@@ -17,6 +18,7 @@ export default function BillingPage() {
   const [loading, setLoading] = useState(true)
   const [checkoutLoading, setCheckoutLoading] = useState(false)
   const [portalLoading, setPortalLoading] = useState(false)
+  const [cancelLoading, setCancelLoading] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   useEffect(() => {
@@ -72,6 +74,34 @@ export default function BillingPage() {
     }
   }
 
+  async function handleCancel() {
+    const willCancel = !data?.cancelAtPeriodEnd
+    if (willCancel && !confirm('Se cancelara tu suscripcion al final del periodo actual. Puedes reactivarla en cualquier momento antes de esa fecha.')) {
+      return
+    }
+    setCancelLoading(true)
+    setMessage(null)
+    try {
+      const res = await fetch('/api/stripe/cancel', { method: 'POST' })
+      const json = await res.json()
+      if (res.ok) {
+        setData(prev => prev ? { ...prev, cancelAtPeriodEnd: json.cancelAtPeriodEnd } : prev)
+        setMessage({
+          type: json.cancelAtPeriodEnd ? 'error' : 'success',
+          text: json.cancelAtPeriodEnd
+            ? 'Suscripcion programada para cancelarse al final del periodo.'
+            : 'Suscripcion reactivada correctamente.',
+        })
+      } else {
+        setMessage({ type: 'error', text: json.error || 'Error al procesar' })
+      }
+    } catch {
+      setMessage({ type: 'error', text: 'Error de conexion' })
+    } finally {
+      setCancelLoading(false)
+    }
+  }
+
   const isActive = data?.status === 'active'
 
   return (
@@ -94,19 +124,39 @@ export default function BillingPage() {
           </CardHeader>
           <CardContent>
             {isActive ? (
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Badge className="bg-green-500/10 text-green-500">Activa</Badge>
-                  {data.currentPeriodEnd && (
-                    <span className="text-sm text-muted-foreground">
-                      Proximo cobro: {new Date(data.currentPeriodEnd).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}
-                    </span>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {data.cancelAtPeriodEnd ? (
+                      <Badge className="bg-yellow-500/10 text-yellow-500">Se cancela al final del periodo</Badge>
+                    ) : (
+                      <Badge className="bg-green-500/10 text-green-500">Activa</Badge>
+                    )}
+                    {data.currentPeriodEnd && (
+                      <span className="text-sm text-muted-foreground">
+                        {data.cancelAtPeriodEnd ? 'Activa hasta:' : 'Proximo cobro:'}{' '}
+                        {new Date(data.currentPeriodEnd).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}
+                      </span>
+                    )}
+                  </div>
+                  <Button variant="outline" size="sm" onClick={handlePortal} disabled={portalLoading}>
+                    <Settings className="mr-2 h-4 w-4" />
+                    {portalLoading ? 'Abriendo...' : 'Cambiar tarjeta'}
+                  </Button>
+                </div>
+                <div className="flex justify-end">
+                  {data.cancelAtPeriodEnd ? (
+                    <Button variant="outline" size="sm" onClick={handleCancel} disabled={cancelLoading}>
+                      <RotateCcw className="mr-2 h-4 w-4" />
+                      {cancelLoading ? 'Procesando...' : 'Reactivar suscripcion'}
+                    </Button>
+                  ) : (
+                    <Button variant="destructive" size="sm" onClick={handleCancel} disabled={cancelLoading}>
+                      <XCircle className="mr-2 h-4 w-4" />
+                      {cancelLoading ? 'Procesando...' : 'Cancelar suscripcion'}
+                    </Button>
                   )}
                 </div>
-                <Button variant="outline" size="sm" onClick={handlePortal} disabled={portalLoading}>
-                  <Settings className="mr-2 h-4 w-4" />
-                  {portalLoading ? 'Abriendo...' : 'Cambiar tarjeta'}
-                </Button>
               </div>
             ) : (
               <div className="space-y-3">

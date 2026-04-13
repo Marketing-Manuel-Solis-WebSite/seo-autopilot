@@ -11,6 +11,7 @@ export async function GET() {
     return Response.json({
       status: sub?.status ?? 'inactive',
       currentPeriodEnd: sub?.currentPeriodEnd ?? null,
+      cancelAtPeriodEnd: sub?.cancelAtPeriodEnd ?? false,
     })
   } catch (error) {
     console.error('[Billing]', error)
