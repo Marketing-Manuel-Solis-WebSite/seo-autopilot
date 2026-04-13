@@ -1,5 +1,6 @@
 import { getRedis } from '@/lib/upstash/redis'
 import { withRetry } from '@/lib/utils/retry'
+import { logDataForSEOCost } from '@/lib/costs/tracker'
 
 const BASE = 'https://api.dataforseo.com/v3'
 
@@ -30,6 +31,13 @@ async function dfsFetch(endpoint: string, body: unknown): Promise<unknown> {
     },
     { maxAttempts: 3, baseDelayMs: 2000, label: 'DataForSEO API' },
   )
+
+  // Log cost from DataForSEO response
+  const dfsData = data as { tasks?: Array<{ cost?: number }> }
+  const cost = dfsData?.tasks?.[0]?.cost
+  if (cost && cost > 0) {
+    logDataForSEOCost(cost, endpoint)
+  }
 
   try { await redis.setex(cacheKey, 86400, JSON.stringify(data)) } catch {}
   return data

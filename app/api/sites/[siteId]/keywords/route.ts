@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth } from '@/lib/supabase/route-auth'
-import { checkLimit } from '@/lib/stripe/subscription'
 
 export async function GET(
   request: Request,
@@ -34,17 +33,6 @@ export async function POST(
   if (authError) return authError
 
   const { siteId } = await params
-
-  const { allowed, current, limit, tier } = await checkLimit('keywords')
-  if (!allowed) {
-    return NextResponse.json(
-      {
-        error: 'Limite de keywords alcanzado',
-        message: `Tu nivel ${tier} permite ${limit} keywords. Actualmente tienes ${current}. Actualiza tu suscripcion en /billing.`,
-      },
-      { status: 403 },
-    )
-  }
 
   const body = await request.json()
 

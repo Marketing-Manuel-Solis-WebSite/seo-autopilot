@@ -5,6 +5,7 @@ import type { ClaudeAnalysisResult, ContentGenerationResult } from './types'
 import type { SERPAnalysis } from '@/lib/serp/analyzer'
 import type { TopicMap } from '@/lib/seo/topical-authority'
 import { withRetry } from '@/lib/utils/retry'
+import { logClaudeCost } from '@/lib/costs/tracker'
 
 export interface OpusAnalysisInput {
   siteData: { domain: string; name: string }
@@ -34,6 +35,8 @@ export async function claudeOpusDeepAnalysis(input: OpusAnalysisInput): Promise<
     }),
     { maxAttempts: 3, baseDelayMs: 1000, label: 'Claude Opus deep analysis' },
   )
+
+  logClaudeCost('claude-opus', response.usage.input_tokens, response.usage.output_tokens, 'deep-analysis')
 
   const textContent = response.content.find(block => block.type === 'text')
   if (!textContent || textContent.type !== 'text') {
@@ -67,6 +70,8 @@ export async function claudeOpusGenerateContent(input: {
     }),
     { maxAttempts: 3, baseDelayMs: 1000, label: 'Claude Opus content generation' },
   )
+
+  logClaudeCost('claude-opus', response.usage.input_tokens, response.usage.output_tokens, 'content-generation')
 
   const textContent = response.content.find(block => block.type === 'text')
   if (!textContent || textContent.type !== 'text') {

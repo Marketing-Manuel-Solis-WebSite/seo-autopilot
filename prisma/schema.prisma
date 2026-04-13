@@ -278,6 +278,16 @@ model Subscription {
   updatedAt            DateTime  @updatedAt
 }
 
+model ApiCost {
+  id        String   @id @default(cuid())
+  provider  String   // "claude-opus", "claude-sonnet", "dataforseo"
+  costCents Int      // cost in cents (e.g. 150 = $1.50)
+  detail    String?  // e.g. "deep-analysis", "serp-check"
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
 model Location {
   id           String   @id @default(cuid())
   siteId       String

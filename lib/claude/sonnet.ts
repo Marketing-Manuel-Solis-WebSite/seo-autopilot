@@ -1,6 +1,7 @@
 import { getAnthropic, MODELS } from './client'
 import type { MonitorResult, FixSuggestionResult } from './types'
 import { withRetry } from '@/lib/utils/retry'
+import { logClaudeCost } from '@/lib/costs/tracker'
 
 export async function claudeSonnetMonitor(input: {
   site: { id: string; domain: string; name: string }
@@ -38,6 +39,8 @@ Responde SOLO en JSON válido:
     }),
     { maxAttempts: 3, baseDelayMs: 1000, label: 'Claude Sonnet monitor' },
   )
+
+  logClaudeCost('claude-sonnet', response.usage.input_tokens, response.usage.output_tokens, 'monitor')
 
   const textContent = response.content.find(block => block.type === 'text')
   if (!textContent || textContent.type !== 'text') {
@@ -81,6 +84,8 @@ Responde en JSON:
     }),
     { maxAttempts: 3, baseDelayMs: 1000, label: 'Claude Sonnet fix suggestion' },
   )
+
+  logClaudeCost('claude-sonnet', response.usage.input_tokens, response.usage.output_tokens, 'fix-suggestion')
 
   const textContent = response.content.find(block => block.type === 'text')
   if (!textContent || textContent.type !== 'text') {

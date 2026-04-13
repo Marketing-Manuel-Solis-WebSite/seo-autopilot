@@ -16,7 +16,8 @@
  *   5. Prints the env vars to paste into .env.local
  */
 
-import 'dotenv/config'
+import { config } from 'dotenv'
+config({ path: '.env.local' })
 import Stripe from 'stripe'
 import * as fs from 'fs'
 import * as path from 'path'

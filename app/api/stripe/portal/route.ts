@@ -6,7 +6,7 @@ export async function POST() {
     const subscription = await prisma.subscription.findFirst()
 
     if (!subscription) {
-      return Response.json({ error: 'No hay suscripcion activa' }, { status: 404 })
+      return Response.json({ error: 'No hay pago configurado' }, { status: 404 })
     }
 
     const appUrl = process.env.APP_URL || 'http://localhost:3000'
@@ -19,6 +19,6 @@ export async function POST() {
     return Response.json({ url: session.url })
   } catch (error) {
     console.error('[Stripe Portal]', error)
-    return Response.json({ error: 'Error al crear portal de facturacion' }, { status: 500 })
+    return Response.json({ error: 'Error al abrir portal' }, { status: 500 })
   }
 }
