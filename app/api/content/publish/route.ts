@@ -15,9 +15,9 @@ export async function POST(request: Request) {
     include: { site: true },
   })
 
-  if (content.status !== 'approved' && content.status !== 'publish_failed') {
+  if (content.status !== 'approved') {
     return NextResponse.json(
-      { error: 'Content must be approved or in publish_failed state' },
+      { error: 'Content must be approved before publishing' },
       { status: 400 },
     )
   }
@@ -47,51 +47,72 @@ export async function POST(request: Request) {
     }
   }
 
-  const result = await adapter.publishPost(site, {
-    title: content.title,
-    body: bodyWithLinks,
-    slug: content.slug,
-    metaTitle: content.metaTitle,
-    metaDescription: content.metaDescription,
-    schema: content.schema,
-  })
+  try {
+    const result = await adapter.publishPost(site, {
+      title: content.title,
+      body: bodyWithLinks,
+      slug: content.slug,
+      metaTitle: content.metaTitle,
+      metaDescription: content.metaDescription,
+      schema: content.schema,
+    })
 
-  if (result.success) {
+    if (result.success) {
+      await prisma.content.update({
+        where: { id: contentId },
+        data: {
+          status: 'published',
+          publishedAt: new Date(),
+          publishedUrl: result.url ?? `https://${site.domain}/${content.slug}`,
+        },
+      })
+
+      return NextResponse.json({
+        status: 'published',
+        contentId,
+        postId: result.postId,
+        url: result.url,
+      })
+    }
+
+    // Publish failed (adapter returned success: false)
     await prisma.content.update({
       where: { id: contentId },
-      data: {
-        status: 'published',
-        publishedAt: new Date(),
-        publishedUrl: result.url ?? `https://${site.domain}/${content.slug}`,
-      },
+      data: { status: 'publish_failed' },
     })
 
-    return NextResponse.json({
-      status: 'published',
-      contentId,
-      postId: result.postId,
-      url: result.url,
+    await triggerAlert({
+      siteId: site.id,
+      alertType: 'publish_failed',
+      severity: 'warning',
+      title: `Failed to publish: ${content.title}`,
+      message: result.error ?? 'Unknown CMS error',
     })
+
+    return NextResponse.json(
+      { error: 'CMS publish failed', detail: result.error },
+      { status: 502 },
+    )
+  } catch (err) {
+    // Adapter threw an exception
+    await prisma.content.update({
+      where: { id: contentId },
+      data: { status: 'publish_failed' },
+    })
+
+    await triggerAlert({
+      siteId: site.id,
+      alertType: 'publish_failed',
+      severity: 'warning',
+      title: `Failed to publish: ${content.title}`,
+      message: (err as Error).message,
+    })
+
+    return NextResponse.json(
+      { error: 'CMS publish failed', detail: (err as Error).message },
+      { status: 500 },
+    )
   }
-
-  // Publish failed
-  await prisma.content.update({
-    where: { id: contentId },
-    data: { status: 'publish_failed' },
-  })
-
-  await triggerAlert({
-    siteId: site.id,
-    alertType: 'publish_failed',
-    severity: 'warning',
-    title: `Failed to publish: ${content.title}`,
-    message: result.error ?? 'Unknown CMS error',
-  })
-
-  return NextResponse.json(
-    { error: 'CMS publish failed', detail: result.error },
-    { status: 502 },
-  )
 }
 
 function escapeRegex(str: string): string {

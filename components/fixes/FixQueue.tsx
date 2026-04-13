@@ -21,11 +21,20 @@ interface Fix {
 export default function FixQueue() {
   const [fixes, setFixes] = useState<Fix[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     fetch('/api/fixes?status=pending_approval')
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error(`Error ${r.status}`)
+        return r.json()
+      })
       .then(data => { setFixes(data); setLoading(false) })
+      .catch(err => {
+        console.error('[FixQueue] fetch failed:', err)
+        setError(err.message)
+        setLoading(false)
+      })
   }, [])
 
   function handleAction(fixId: string, newStatus: string) {
@@ -33,6 +42,7 @@ export default function FixQueue() {
   }
 
   if (loading) return <p className="text-sm text-muted-foreground">Cargando fixes...</p>
+  if (error) return <p className="text-sm text-red-500">Error al cargar fixes: {error}</p>
   if (fixes.length === 0) return <p className="text-sm text-muted-foreground">No hay fixes pendientes de aprobación.</p>
 
   return (

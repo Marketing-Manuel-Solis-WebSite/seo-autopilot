@@ -37,6 +37,7 @@ export default async function SiteDetailPage({
     { href: `/sites/${siteId}/content`, label: 'Contenido' },
     { href: `/sites/${siteId}/backlinks`, label: 'Backlinks' },
     { href: `/sites/${siteId}/competitors`, label: 'Competencia' },
+    { href: `/sites/${siteId}/local`, label: 'Local SEO' },
   ]
 
   return (

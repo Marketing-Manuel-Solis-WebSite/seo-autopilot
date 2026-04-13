@@ -19,6 +19,7 @@ export default function ContentGenerator() {
   const [sites, setSites] = useState<Site[]>([])
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedContent, setGeneratedContent] = useState<any>(null)
+  const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     siteId: '',
     contentType: 'blog',
@@ -28,21 +29,35 @@ export default function ContentGenerator() {
   })
 
   useEffect(() => {
-    fetch('/api/sites').then(r => r.json()).then(setSites)
+    fetch('/api/sites')
+      .then(r => {
+        if (!r.ok) throw new Error(`Error ${r.status}`)
+        return r.json()
+      })
+      .then(setSites)
+      .catch(err => console.error('[ContentGenerator] Failed to load sites:', err))
   }, [])
 
   async function handleGenerate() {
     if (!formData.siteId || !formData.targetKeyword) return
     setIsGenerating(true)
     setGeneratedContent(null)
+    setError(null)
     try {
       const res = await fetch('/api/claude/generate-content', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       })
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        throw new Error(errData.error ?? `Error ${res.status}`)
+      }
       const data = await res.json()
       setGeneratedContent(data)
+    } catch (err) {
+      console.error('[ContentGenerator] generation failed:', err)
+      setError((err as Error).message)
     } finally {
       setIsGenerating(false)
     }
@@ -108,6 +123,11 @@ export default function ContentGenerator() {
               rows={3}
             />
           </div>
+
+          {error && (
+            <p className="text-sm text-red-500">Error: {error}</p>
+          )}
+
           <Button onClick={handleGenerate} disabled={isGenerating || !formData.siteId || !formData.targetKeyword} className="w-fit">
             {isGenerating ? (
               <>

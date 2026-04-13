@@ -94,7 +94,12 @@ export const wordpress: CMSAdapter = {
         return { success: false, error: `No post found with slug: ${slug}` }
       }
 
-      return wordpress.updatePost(site, String(posts[0].id), { metaTitle, metaDescription })
+      // Only send fields that have actual values — skip empty strings to avoid overwriting
+      const updateData: { metaTitle?: string; metaDescription?: string } = {}
+      if (metaTitle) updateData.metaTitle = metaTitle
+      if (metaDescription) updateData.metaDescription = metaDescription
+
+      return wordpress.updatePost(site, String(posts[0].id), updateData)
     } catch (error) {
       return { success: false, error: `WordPress meta fix failed: ${(error as Error).message}` }
     }

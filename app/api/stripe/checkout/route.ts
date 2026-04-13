@@ -1,9 +1,13 @@
 import { stripe, getUnitPriceId } from '@/lib/stripe/client'
 import { prisma } from '@/lib/prisma'
+import { requireAuth } from '@/lib/supabase/route-auth'
 
 const MONTHLY_AMOUNT = 700 // $700 USD/month fixed
 
 export async function POST() {
+  const { error: authError } = await requireAuth()
+  if (authError) return authError
+
   try {
     let subscription = await prisma.subscription.findFirst()
     let customerId: string

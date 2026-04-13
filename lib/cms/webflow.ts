@@ -102,7 +102,11 @@ export const webflow: CMSAdapter = {
         return { success: false, error: `No item found with slug: ${slug}` }
       }
 
-      return webflow.updatePost(site, item.id, { metaTitle, metaDescription })
+      const updateData: { metaTitle?: string; metaDescription?: string } = {}
+      if (metaTitle) updateData.metaTitle = metaTitle
+      if (metaDescription) updateData.metaDescription = metaDescription
+
+      return webflow.updatePost(site, item.id, updateData)
     } catch (error) {
       return { success: false, error: `Webflow meta fix failed: ${(error as Error).message}` }
     }

@@ -40,9 +40,16 @@ export async function PATCH(
   const { siteId } = await params
   const body = await request.json()
 
+  // Whitelist allowed fields to prevent updating sensitive data
+  const allowedFields = ['name', 'domain', 'cmsType', 'cmsApiUrl', 'cmsApiKey', 'isActive', 'autoApplyFixes', 'autoPublishContent'] as const
+  const data: Record<string, unknown> = {}
+  for (const key of allowedFields) {
+    if (body[key] !== undefined) data[key] = body[key]
+  }
+
   const site = await prisma.site.update({
     where: { id: siteId },
-    data: body,
+    data,
   })
 
   return NextResponse.json(site)

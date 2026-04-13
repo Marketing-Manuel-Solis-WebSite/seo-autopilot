@@ -20,25 +20,48 @@ interface ContentApprovalProps {
 }
 
 export default function ContentApproval({ content, siteId }: ContentApprovalProps) {
-  const [status, setStatus] = useState<'idle' | 'approving' | 'approved' | 'rejected'>('idle')
+  const [status, setStatus] = useState<'idle' | 'approving' | 'approved' | 'rejected' | 'error'>('idle')
+  const [error, setError] = useState<string | null>(null)
 
   async function handleApprove() {
     setStatus('approving')
-    await fetch('/api/content/approve', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contentId: content.contentId, approved: true }),
-    })
-    setStatus('approved')
+    setError(null)
+    try {
+      const res = await fetch('/api/content/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contentId: content.contentId, approved: true }),
+      })
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        throw new Error(errData.error ?? `Error ${res.status}`)
+      }
+      setStatus('approved')
+    } catch (err) {
+      console.error('[ContentApproval] approve failed:', err)
+      setError((err as Error).message)
+      setStatus('error')
+    }
   }
 
   async function handleReject() {
-    await fetch('/api/content/approve', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contentId: content.contentId, approved: false }),
-    })
-    setStatus('rejected')
+    setError(null)
+    try {
+      const res = await fetch('/api/content/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contentId: content.contentId, approved: false }),
+      })
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        throw new Error(errData.error ?? `Error ${res.status}`)
+      }
+      setStatus('rejected')
+    } catch (err) {
+      console.error('[ContentApproval] reject failed:', err)
+      setError((err as Error).message)
+      setStatus('error')
+    }
   }
 
   return (
@@ -70,7 +93,11 @@ export default function ContentApproval({ content, siteId }: ContentApprovalProp
           />
         </div>
 
-        {status === 'idle' && (
+        {error && (
+          <p className="text-sm text-red-500">Error: {error}</p>
+        )}
+
+        {(status === 'idle' || status === 'error') && (
           <div className="flex gap-3">
             <Button onClick={handleApprove} className="gap-2">
               <Check className="h-4 w-4" />
@@ -81,6 +108,9 @@ export default function ContentApproval({ content, siteId }: ContentApprovalProp
               Rechazar
             </Button>
           </div>
+        )}
+        {status === 'approving' && (
+          <Badge className="bg-yellow-500/10 text-yellow-500">Aprobando...</Badge>
         )}
         {status === 'approved' && (
           <Badge className="bg-green-500/10 text-green-500">Contenido aprobado</Badge>

@@ -171,7 +171,11 @@ export const github: CMSAdapter = {
     try {
       const { owner, repo, blogPath } = parseRepo(site)
       const filePath = `${blogPath}/${slug}.mdx`
-      return github.updatePost(site, filePath, { metaTitle, metaDescription })
+      const updateData: { metaTitle?: string; metaDescription?: string } = {}
+      if (metaTitle) updateData.metaTitle = metaTitle
+      if (metaDescription) updateData.metaDescription = metaDescription
+
+      return github.updatePost(site, filePath, updateData)
     } catch (error) {
       return { success: false, error: `GitHub meta fix failed: ${(error as Error).message}` }
     }

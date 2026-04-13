@@ -1,7 +1,11 @@
 import { stripe } from '@/lib/stripe/client'
 import { prisma } from '@/lib/prisma'
+import { requireAuth } from '@/lib/supabase/route-auth'
 
 export async function POST() {
+  const { error: authError } = await requireAuth()
+  if (authError) return authError
+
   try {
     const subscription = await prisma.subscription.findFirst()
 

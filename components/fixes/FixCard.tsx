@@ -31,25 +31,42 @@ const priorityColors: Record<string, string> = {
 
 export default function FixCard({ fix, onAction }: FixCardProps) {
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   async function handleApprove() {
     setLoading(true)
-    await fetch('/api/fixes/approve', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fixId: fix.id, approved: true }),
-    })
-    onAction(fix.id, 'approved')
+    setError(null)
+    try {
+      const res = await fetch('/api/fixes/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fixId: fix.id, approved: true }),
+      })
+      if (!res.ok) throw new Error(`Error ${res.status}`)
+      onAction(fix.id, 'approved')
+    } catch (err) {
+      console.error('[FixCard] approve failed:', err)
+      setError('Error al aprobar')
+      setLoading(false)
+    }
   }
 
   async function handleReject() {
     setLoading(true)
-    await fetch('/api/fixes/approve', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fixId: fix.id, approved: false }),
-    })
-    onAction(fix.id, 'rejected')
+    setError(null)
+    try {
+      const res = await fetch('/api/fixes/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fixId: fix.id, approved: false }),
+      })
+      if (!res.ok) throw new Error(`Error ${res.status}`)
+      onAction(fix.id, 'rejected')
+    } catch (err) {
+      console.error('[FixCard] reject failed:', err)
+      setError('Error al rechazar')
+      setLoading(false)
+    }
   }
 
   return (
@@ -94,6 +111,10 @@ export default function FixCard({ fix, onAction }: FixCardProps) {
               </div>
             )}
           </div>
+        )}
+
+        {error && (
+          <p className="text-xs text-red-500">{error}</p>
         )}
 
         <div className="flex gap-2">

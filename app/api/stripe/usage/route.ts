@@ -1,6 +1,10 @@
 import { prisma } from '@/lib/prisma'
+import { requireAuth } from '@/lib/supabase/route-auth'
 
 export async function GET() {
+  const { error: authError } = await requireAuth()
+  if (authError) return authError
+
   try {
     const sub = await prisma.subscription.findFirst()
 

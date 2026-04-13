@@ -22,37 +22,71 @@ interface Alert {
 
 export default function AlertCenter() {
   const [alerts, setAlerts] = useState<Alert[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState({ severity: '', unreadOnly: true })
 
   useEffect(() => {
+    setLoading(true)
+    setError(null)
     const params = new URLSearchParams()
     if (filter.severity) params.set('severity', filter.severity)
     if (filter.unreadOnly) params.set('unreadOnly', 'true')
-    fetch(`/api/alerts?${params}`).then(r => r.json()).then(setAlerts)
+
+    fetch(`/api/alerts?${params}`)
+      .then(r => {
+        if (!r.ok) throw new Error(`Error ${r.status}`)
+        return r.json()
+      })
+      .then(setAlerts)
+      .catch(err => {
+        console.error('[AlertCenter] fetch failed:', err)
+        setError(err.message)
+      })
+      .finally(() => setLoading(false))
   }, [filter])
 
   async function markRead(alertId: string) {
-    await fetch('/api/alerts', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ alertId, isRead: true }),
-    })
-    setAlerts(prev => prev.map(a => a.id === alertId ? { ...a, isRead: true } : a))
+    try {
+      const res = await fetch('/api/alerts', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ alertId, isRead: true }),
+      })
+      if (!res.ok) throw new Error(`Error ${res.status}`)
+      setAlerts(prev => prev.map(a => a.id === alertId ? { ...a, isRead: true } : a))
+    } catch (err) {
+      console.error('[AlertCenter] markRead failed:', err)
+    }
   }
 
   async function resolve(alertId: string) {
-    await fetch('/api/alerts', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ alertId, isResolved: true }),
-    })
-    setAlerts(prev => prev.filter(a => a.id !== alertId))
+    try {
+      const res = await fetch('/api/alerts', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ alertId, isResolved: true }),
+      })
+      if (!res.ok) throw new Error(`Error ${res.status}`)
+      setAlerts(prev => prev.filter(a => a.id !== alertId))
+    } catch (err) {
+      console.error('[AlertCenter] resolve failed:', err)
+    }
   }
 
   return (
     <div className="space-y-4">
       <AlertFilters filter={filter} onChange={setFilter} />
-      {alerts.map(alert => (
+
+      {loading && (
+        <p className="py-8 text-center text-sm text-muted-foreground">Cargando alertas...</p>
+      )}
+
+      {error && (
+        <p className="py-8 text-center text-sm text-red-500">Error al cargar alertas: {error}</p>
+      )}
+
+      {!loading && !error && alerts.map(alert => (
         <Card key={alert.id} className={severityColor(alert.severity)}>
           <CardHeader className="flex flex-row items-start justify-between pb-2">
             <div>
@@ -82,7 +116,8 @@ export default function AlertCenter() {
           </CardContent>
         </Card>
       ))}
-      {alerts.length === 0 && (
+
+      {!loading && !error && alerts.length === 0 && (
         <p className="py-8 text-center text-sm text-muted-foreground">Sin alertas</p>
       )}
     </div>

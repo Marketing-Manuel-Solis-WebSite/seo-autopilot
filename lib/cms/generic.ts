@@ -85,7 +85,12 @@ export const generic: CMSAdapter = {
         return { success: false, error: `No post found with slug: ${slug}` }
       }
 
-      return generic.updatePost(site, post.id ?? post._id, { metaTitle, metaDescription })
+      // Only send fields that have actual values — skip empty strings to avoid overwriting
+      const updateData: { metaTitle?: string; metaDescription?: string } = {}
+      if (metaTitle) updateData.metaTitle = metaTitle
+      if (metaDescription) updateData.metaDescription = metaDescription
+
+      return generic.updatePost(site, post.id ?? post._id, updateData)
     } catch (error) {
       return { success: false, error: `CMS meta fix failed: ${(error as Error).message}` }
     }
