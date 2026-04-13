@@ -22,7 +22,7 @@ export default function BillingPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('status') === 'success') {
-      setMessage({ type: 'success', text: 'Pago configurado correctamente. Se cobraran $700 USD/mes automaticamente.' })
+      setMessage({ type: 'success', text: 'Pago configurado correctamente.' })
     } else if (params.get('status') === 'cancelled') {
       setMessage({ type: 'error', text: 'Configuracion cancelada.' })
     }
@@ -76,7 +76,7 @@ export default function BillingPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <PageHeader title="Pago mensual" description="Cobro automatico de $700 USD/mes" />
+      <PageHeader title="Pago mensual" description="Cobro automatico mensual" />
 
       {message && (
         <div className={`rounded-md p-3 text-sm ${message.type === 'success' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
@@ -89,7 +89,7 @@ export default function BillingPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <CreditCard className="h-5 w-5" />
-              Suscripcion — $700 USD/mes
+              Suscripcion mensual
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -111,7 +111,7 @@ export default function BillingPage() {
             ) : (
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground">
-                  Configura la tarjeta para activar el cobro automatico de $700 USD/mes.
+                  Configura tu tarjeta para activar el cobro automatico mensual.
                 </p>
                 <Button onClick={handleSetupCard} disabled={checkoutLoading}>
                   <CreditCard className="mr-2 h-4 w-4" />
