@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { stripe } from '@/lib/stripe/client'
-import { SEMRUSH_FIXED_CENTS, MARKUP_MULTIPLIER } from '@/lib/billing/constants'
+import { MONTHLY_AMOUNT_USD } from '@/lib/billing/constants'
 
 /**
- * Cron job: syncs subscription state and ensures quantity is 0
- * (real charges come as individual invoice line items via webhook).
- * Also calculates and stores the current period cost breakdown.
+ * Cron job: syncs local subscription record with Stripe.
+ * Ensures status, period dates, and monthly amount are accurate.
  */
 export async function GET(request: Request) {
   const cronSecret = process.env.CRON_SECRET
@@ -18,51 +17,41 @@ export async function GET(request: Request) {
   try {
     const sub = await prisma.subscription.findFirst()
 
-    if (!sub?.stripeSubscriptionId || sub.status !== 'active') {
-      return NextResponse.json({ message: 'No active subscription', skipped: true })
+    if (!sub?.stripeSubscriptionId) {
+      return NextResponse.json({ message: 'No subscription to sync', skipped: true })
     }
 
-    // Ensure subscription quantity is 0 so invoice.created webhook handles charges
-    if (sub.stripeItemId) {
-      const item = await stripe().subscriptionItems.retrieve(sub.stripeItemId)
-      if (item.quantity && item.quantity > 0) {
-        await stripe().subscriptionItems.update(sub.stripeItemId, { quantity: 0 })
-        console.log(`[Sync Billing] Set subscription item ${sub.stripeItemId} quantity to 0`)
-      }
-    }
+    // Retrieve the real subscription from Stripe
+    const stripeSub = await stripe().subscriptions.retrieve(sub.stripeSubscriptionId)
 
-    // Calculate current period costs
-    const periodStart = sub.currentPeriodStart
-      ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+    const item = stripeSub.items.data[0]
+    const isActive = stripeSub.status === 'active' || stripeSub.status === 'trialing'
+    const status = isActive
+      ? 'active'
+      : stripeSub.status === 'past_due'
+        ? 'past_due'
+        : stripeSub.status === 'canceled'
+          ? 'cancelled'
+          : 'inactive'
 
-    const costs = await prisma.apiCost.groupBy({
-      by: ['provider'],
-      _sum: { costCents: true },
-      where: { createdAt: { gte: periodStart } },
-    })
-
-    const apiCents = costs.reduce((sum, c) => sum + (c._sum.costCents ?? 0) * MARKUP_MULTIPLIER, 0)
-    const totalCents = SEMRUSH_FIXED_CENTS + apiCents
-    const totalUsd = Math.round(totalCents / 100)
-
-    // Update local monthly amount
     await prisma.subscription.updateMany({
       where: { stripeSubscriptionId: sub.stripeSubscriptionId },
-      data: { monthlyAmount: totalUsd },
+      data: {
+        status,
+        monthlyAmount: isActive ? MONTHLY_AMOUNT_USD : 0,
+        stripeItemId: item?.id ?? null,
+        stripePriceId: item?.price.id ?? null,
+        currentPeriodStart: item ? new Date(item.current_period_start * 1000) : null,
+        currentPeriodEnd: item ? new Date(item.current_period_end * 1000) : null,
+        cancelAtPeriodEnd: stripeSub.cancel_at_period_end,
+      },
     })
 
     return NextResponse.json({
       message: 'Subscription synced',
-      status: sub.status,
-      monthlyAmount: totalUsd,
-      breakdown: {
-        semrush: 500,
-        apis: costs.map(c => ({
-          provider: c.provider,
-          realCents: c._sum.costCents ?? 0,
-          billedCents: (c._sum.costCents ?? 0) * MARKUP_MULTIPLIER,
-        })),
-      },
+      status,
+      monthlyAmount: isActive ? MONTHLY_AMOUNT_USD : 0,
+      cancelAtPeriodEnd: stripeSub.cancel_at_period_end,
     })
   } catch (error) {
     console.error('[Sync Billing]', error)

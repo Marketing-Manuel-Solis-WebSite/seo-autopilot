@@ -1,13 +1,16 @@
-/** Semrush fixed monthly cost in cents */
-export const SEMRUSH_FIXED_CENTS = 50000 // $500 USD
+/** Fixed monthly subscription amount in USD */
+export const MONTHLY_AMOUNT_USD = 700
 
-/** Semrush fixed monthly cost in dollars */
-export const SEMRUSH_FIXED_USD = 500
+/** Fixed monthly subscription amount in cents */
+export const MONTHLY_AMOUNT_CENTS = 70000
 
-/** Internal cost multiplier */
-export const MARKUP_MULTIPLIER = 3
+/**
+ * Quantity to use with the $1/unit Stripe price.
+ * 700 units × $1 = $700/month.
+ */
+export const SUBSCRIPTION_QUANTITY = 700
 
-/** Human-readable labels for API providers */
+/** Human-readable labels for API providers (informational cost breakdown) */
 export const PROVIDER_LABELS: Record<string, string> = {
   'claude-opus': 'Claude Opus — Analisis IA',
   'claude-sonnet': 'Claude Sonnet — Monitoreo IA',

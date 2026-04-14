@@ -2,17 +2,28 @@ import { NextRequest } from 'next/server'
 import { stripe } from '@/lib/stripe/client'
 import { prisma } from '@/lib/prisma'
 import Stripe from 'stripe'
-import { SEMRUSH_FIXED_CENTS, MARKUP_MULTIPLIER, PROVIDER_LABELS } from '@/lib/billing/constants'
+import { MONTHLY_AMOUNT_USD } from '@/lib/billing/constants'
 
+/**
+ * Extracts subscription period and item details from a Stripe Subscription.
+ */
 function getSubscriptionDetails(sub: Stripe.Subscription) {
   const item = sub.items.data[0]
   return {
     start: item ? new Date(item.current_period_start * 1000) : new Date(),
     end: item ? new Date(item.current_period_end * 1000) : new Date(),
-    quantity: item?.quantity ?? 0,
     itemId: item?.id ?? null,
     priceId: item?.price.id ?? null,
   }
+}
+
+/**
+ * Maps Stripe subscription status to our internal status.
+ */
+function mapStatus(stripeStatus: Stripe.Subscription.Status): string {
+  if (stripeStatus === 'active' || stripeStatus === 'trialing') return 'active'
+  if (stripeStatus === 'past_due') return 'past_due'
+  return 'inactive'
 }
 
 export async function POST(request: NextRequest) {
@@ -32,11 +43,7 @@ export async function POST(request: NextRequest) {
       return Response.json({ error: 'Webhook not configured' }, { status: 500 })
     }
 
-    event = stripe().webhooks.constructEvent(
-      body,
-      signature,
-      webhookSecret,
-    )
+    event = stripe().webhooks.constructEvent(body, signature, webhookSecret)
   } catch (err) {
     console.error('[Stripe Webhook] Signature verification failed:', err)
     return Response.json({ error: 'Invalid signature' }, { status: 400 })
@@ -44,57 +51,55 @@ export async function POST(request: NextRequest) {
 
   try {
     switch (event.type) {
+      // ── Checkout completed → activate subscription ──────────────────
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session
-        if (session.mode === 'subscription' && session.subscription && session.customer) {
-          const subscriptionId = typeof session.subscription === 'string'
-            ? session.subscription
-            : session.subscription.id
-          const customerId = typeof session.customer === 'string'
-            ? session.customer
-            : session.customer.id
+        if (session.mode !== 'subscription' || !session.subscription || !session.customer) break
 
-          const stripeSubscription = await stripe().subscriptions.retrieve(subscriptionId)
-          const details = getSubscriptionDetails(stripeSubscription)
+        const subscriptionId = typeof session.subscription === 'string'
+          ? session.subscription
+          : session.subscription.id
+        const customerId = typeof session.customer === 'string'
+          ? session.customer
+          : session.customer.id
 
-          await prisma.subscription.upsert({
-            where: { stripeCustomerId: customerId },
-            update: {
-              stripeSubscriptionId: subscriptionId,
-              stripeItemId: details.itemId,
-              stripePriceId: details.priceId,
-              monthlyAmount: details.quantity,
-              status: 'active',
-              currentPeriodStart: details.start,
-              currentPeriodEnd: details.end,
-              cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end,
-            },
-            create: {
-              stripeCustomerId: customerId,
-              stripeSubscriptionId: subscriptionId,
-              stripeItemId: details.itemId,
-              stripePriceId: details.priceId,
-              monthlyAmount: details.quantity,
-              status: 'active',
-              currentPeriodStart: details.start,
-              currentPeriodEnd: details.end,
-              cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end,
-            },
-          })
-        }
+        const stripeSubscription = await stripe().subscriptions.retrieve(subscriptionId)
+        const details = getSubscriptionDetails(stripeSubscription)
+
+        await prisma.subscription.upsert({
+          where: { stripeCustomerId: customerId },
+          update: {
+            stripeSubscriptionId: subscriptionId,
+            stripeItemId: details.itemId,
+            stripePriceId: details.priceId,
+            monthlyAmount: MONTHLY_AMOUNT_USD,
+            status: 'active',
+            currentPeriodStart: details.start,
+            currentPeriodEnd: details.end,
+            cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end,
+          },
+          create: {
+            stripeCustomerId: customerId,
+            stripeSubscriptionId: subscriptionId,
+            stripeItemId: details.itemId,
+            stripePriceId: details.priceId,
+            monthlyAmount: MONTHLY_AMOUNT_USD,
+            status: 'active',
+            currentPeriodStart: details.start,
+            currentPeriodEnd: details.end,
+            cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end,
+          },
+        })
+        console.log(`[Stripe Webhook] checkout.session.completed — subscription ${subscriptionId} activated`)
         break
       }
 
+      // ── Subscription updated → sync status and period ───────────────
       case 'customer.subscription.updated': {
         const sub = event.data.object as Stripe.Subscription
         const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer.id
         const details = getSubscriptionDetails(sub)
-
-        const status = sub.status === 'active' || sub.status === 'trialing'
-          ? 'active'
-          : sub.status === 'past_due'
-            ? 'past_due'
-            : 'inactive'
+        const status = mapStatus(sub.status)
 
         await prisma.subscription.updateMany({
           where: { stripeCustomerId: customerId },
@@ -102,15 +107,17 @@ export async function POST(request: NextRequest) {
             status,
             stripeItemId: details.itemId,
             stripePriceId: details.priceId,
-            monthlyAmount: details.quantity,
+            monthlyAmount: status === 'active' ? MONTHLY_AMOUNT_USD : 0,
             currentPeriodStart: details.start,
             currentPeriodEnd: details.end,
             cancelAtPeriodEnd: sub.cancel_at_period_end,
           },
         })
+        console.log(`[Stripe Webhook] subscription.updated — ${customerId} → ${status}`)
         break
       }
 
+      // ── Subscription deleted → mark cancelled ───────────────────────
       case 'customer.subscription.deleted': {
         const sub = event.data.object as Stripe.Subscription
         const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer.id
@@ -126,96 +133,11 @@ export async function POST(request: NextRequest) {
             cancelAtPeriodEnd: false,
           },
         })
+        console.log(`[Stripe Webhook] subscription.deleted — ${customerId} cancelled`)
         break
       }
 
-      case 'invoice.created': {
-        // Invoice is in draft — add itemized cost breakdown
-        const createdInvoice = event.data.object as Stripe.Invoice
-        const isSubscriptionInvoice = createdInvoice.parent?.subscription_details != null
-        if (createdInvoice.status !== 'draft' || !isSubscriptionInvoice) break
-
-        const invoiceCustomerId = typeof createdInvoice.customer === 'string'
-          ? createdInvoice.customer
-          : createdInvoice.customer?.id
-        if (!invoiceCustomerId) break
-
-        try {
-          // Idempotency: check if we already added line items to this invoice
-          const existingLines = await stripe().invoices.listLineItems(createdInvoice.id, { limit: 10 })
-          const alreadyProcessed = existingLines.data.some(
-            li => li.description?.includes('Semrush')
-          )
-          if (alreadyProcessed) {
-            console.log(`[Stripe Webhook] Invoice ${createdInvoice.id} already has line items, skipping`)
-            break
-          }
-
-          // Get billing period from local subscription
-          const localSub = await prisma.subscription.findFirst({
-            where: { stripeCustomerId: invoiceCustomerId },
-          })
-          const periodStart = localSub?.currentPeriodStart
-            ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-
-          // Calculate API costs for the period
-          const costs = await prisma.apiCost.groupBy({
-            by: ['provider'],
-            _sum: { costCents: true },
-            where: { createdAt: { gte: periodStart } },
-          })
-
-          // Add Semrush fixed cost line item
-          await stripe().invoiceItems.create({
-            customer: invoiceCustomerId,
-            invoice: createdInvoice.id,
-            amount: SEMRUSH_FIXED_CENTS,
-            currency: 'usd',
-            description: 'Semrush — Herramientas SEO (fijo mensual)',
-          })
-
-          // Add each API provider as a separate line item (real cost × 3)
-          let apiTotalCents = 0
-          for (const cost of costs) {
-            const realCents = cost._sum.costCents ?? 0
-            const billedCents = realCents * MARKUP_MULTIPLIER
-            if (billedCents <= 0) continue
-
-            apiTotalCents += billedCents
-            const label = PROVIDER_LABELS[cost.provider] ?? cost.provider
-
-            await stripe().invoiceItems.create({
-              customer: invoiceCustomerId,
-              invoice: createdInvoice.id,
-              amount: billedCents,
-              currency: 'usd',
-              description: label,
-            })
-          }
-
-          // Ensure subscription quantity is 0 so it doesn't add its own charge
-          if (localSub?.stripeItemId) {
-            await stripe().subscriptionItems.update(localSub.stripeItemId, {
-              quantity: 0,
-            })
-          }
-
-          // Update local record with the billed total
-          const totalCents = SEMRUSH_FIXED_CENTS + apiTotalCents
-          if (localSub) {
-            await prisma.subscription.updateMany({
-              where: { stripeCustomerId: invoiceCustomerId },
-              data: { monthlyAmount: Math.round(totalCents / 100) },
-            })
-          }
-
-          console.log(`[Stripe Webhook] Invoice ${createdInvoice.id} — added ${costs.length + 1} line items, total $${(totalCents / 100).toFixed(2)}`)
-        } catch (err) {
-          console.error('[Stripe Webhook] Failed to add invoice line items:', err)
-        }
-        break
-      }
-
+      // ── Payment succeeded → reactivate if past_due ──────────────────
       case 'invoice.payment_succeeded': {
         const paidInvoice = event.data.object as Stripe.Invoice
         const paidCustomerId = typeof paidInvoice.customer === 'string'
@@ -225,12 +147,13 @@ export async function POST(request: NextRequest) {
         if (paidCustomerId) {
           await prisma.subscription.updateMany({
             where: { stripeCustomerId: paidCustomerId, status: 'past_due' },
-            data: { status: 'active' },
+            data: { status: 'active', monthlyAmount: MONTHLY_AMOUNT_USD },
           })
         }
         break
       }
 
+      // ── Payment failed → mark past_due ──────────────────────────────
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice
         const customerId = typeof invoice.customer === 'string'
