@@ -2,15 +2,7 @@ import { NextRequest } from 'next/server'
 import { stripe } from '@/lib/stripe/client'
 import { prisma } from '@/lib/prisma'
 import Stripe from 'stripe'
-
-const SEMRUSH_FIXED_CENTS = 50000 // $500 USD
-const MARKUP_MULTIPLIER = 3
-
-const PROVIDER_LABELS: Record<string, string> = {
-  'claude-opus': 'Claude Opus — Analisis IA',
-  'claude-sonnet': 'Claude Sonnet — Monitoreo IA',
-  'dataforseo': 'DataForSEO — Datos SERP',
-}
+import { SEMRUSH_FIXED_CENTS, MARKUP_MULTIPLIER, PROVIDER_LABELS } from '@/lib/billing/constants'
 
 function getSubscriptionDetails(sub: Stripe.Subscription) {
   const item = sub.items.data[0]
@@ -149,6 +141,16 @@ export async function POST(request: NextRequest) {
         if (!invoiceCustomerId) break
 
         try {
+          // Idempotency: check if we already added line items to this invoice
+          const existingLines = await stripe().invoices.listLineItems(createdInvoice.id, { limit: 10 })
+          const alreadyProcessed = existingLines.data.some(
+            li => li.description?.includes('Semrush')
+          )
+          if (alreadyProcessed) {
+            console.log(`[Stripe Webhook] Invoice ${createdInvoice.id} already has line items, skipping`)
+            break
+          }
+
           // Get billing period from local subscription
           const localSub = await prisma.subscription.findFirst({
             where: { stripeCustomerId: invoiceCustomerId },
@@ -210,6 +212,21 @@ export async function POST(request: NextRequest) {
           console.log(`[Stripe Webhook] Invoice ${createdInvoice.id} — added ${costs.length + 1} line items, total $${(totalCents / 100).toFixed(2)}`)
         } catch (err) {
           console.error('[Stripe Webhook] Failed to add invoice line items:', err)
+        }
+        break
+      }
+
+      case 'invoice.payment_succeeded': {
+        const paidInvoice = event.data.object as Stripe.Invoice
+        const paidCustomerId = typeof paidInvoice.customer === 'string'
+          ? paidInvoice.customer
+          : paidInvoice.customer?.id
+
+        if (paidCustomerId) {
+          await prisma.subscription.updateMany({
+            where: { stripeCustomerId: paidCustomerId, status: 'past_due' },
+            data: { status: 'active' },
+          })
         }
         break
       }

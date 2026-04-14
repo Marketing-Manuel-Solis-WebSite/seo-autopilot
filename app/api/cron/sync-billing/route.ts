@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { stripe } from '@/lib/stripe/client'
-
-const SEMRUSH_FIXED_CENTS = 50000 // $500 USD
-const MARKUP_MULTIPLIER = 3
+import { SEMRUSH_FIXED_CENTS, MARKUP_MULTIPLIER } from '@/lib/billing/constants'
 
 /**
  * Cron job: syncs subscription state and ensures quantity is 0

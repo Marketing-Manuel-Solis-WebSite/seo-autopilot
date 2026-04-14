@@ -1,8 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { requireAuth } from '@/lib/supabase/route-auth'
-
-const SEMRUSH_FIXED_USD = 500
-const MARKUP_MULTIPLIER = 3
+import { SEMRUSH_FIXED_USD, MARKUP_MULTIPLIER } from '@/lib/billing/constants'
 
 interface MonthRow {
   month: string
