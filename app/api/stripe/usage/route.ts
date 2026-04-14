@@ -12,6 +12,7 @@ export async function GET() {
       status: sub?.status ?? 'inactive',
       currentPeriodEnd: sub?.currentPeriodEnd ?? null,
       cancelAtPeriodEnd: sub?.cancelAtPeriodEnd ?? false,
+      monthlyAmount: sub?.monthlyAmount ?? 0,
     })
   } catch (error) {
     console.error('[Billing]', error)

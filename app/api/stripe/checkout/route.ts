@@ -2,7 +2,8 @@ import { stripe, getUnitPriceId } from '@/lib/stripe/client'
 import { prisma } from '@/lib/prisma'
 import { requireAuth } from '@/lib/supabase/route-auth'
 
-const MONTHLY_AMOUNT = 700 // $700 USD/month fixed
+// Subscription starts at quantity 0 — real charges are added as
+// individual invoice items by the invoice.created webhook handler.
 
 export async function POST() {
   const { error: authError } = await requireAuth()
@@ -29,7 +30,7 @@ export async function POST() {
     const session = await stripe().checkout.sessions.create({
       customer: customerId,
       mode: 'subscription',
-      line_items: [{ price: getUnitPriceId(), quantity: MONTHLY_AMOUNT }],
+      line_items: [{ price: getUnitPriceId(), quantity: 0 }],
       success_url: `${appUrl}/billing?status=success`,
       cancel_url: `${appUrl}/billing?status=cancelled`,
     })

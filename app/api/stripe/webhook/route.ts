@@ -3,6 +3,15 @@ import { stripe } from '@/lib/stripe/client'
 import { prisma } from '@/lib/prisma'
 import Stripe from 'stripe'
 
+const SEMRUSH_FIXED_CENTS = 50000 // $500 USD
+const MARKUP_MULTIPLIER = 3
+
+const PROVIDER_LABELS: Record<string, string> = {
+  'claude-opus': 'Claude Opus — Analisis IA',
+  'claude-sonnet': 'Claude Sonnet — Monitoreo IA',
+  'dataforseo': 'DataForSEO — Datos SERP',
+}
+
 function getSubscriptionDetails(sub: Stripe.Subscription) {
   const item = sub.items.data[0]
   return {
@@ -125,6 +134,83 @@ export async function POST(request: NextRequest) {
             cancelAtPeriodEnd: false,
           },
         })
+        break
+      }
+
+      case 'invoice.created': {
+        // Invoice is in draft — add itemized cost breakdown
+        const createdInvoice = event.data.object as Stripe.Invoice
+        const isSubscriptionInvoice = createdInvoice.parent?.subscription_details != null
+        if (createdInvoice.status !== 'draft' || !isSubscriptionInvoice) break
+
+        const invoiceCustomerId = typeof createdInvoice.customer === 'string'
+          ? createdInvoice.customer
+          : createdInvoice.customer?.id
+        if (!invoiceCustomerId) break
+
+        try {
+          // Get billing period from local subscription
+          const localSub = await prisma.subscription.findFirst({
+            where: { stripeCustomerId: invoiceCustomerId },
+          })
+          const periodStart = localSub?.currentPeriodStart
+            ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+
+          // Calculate API costs for the period
+          const costs = await prisma.apiCost.groupBy({
+            by: ['provider'],
+            _sum: { costCents: true },
+            where: { createdAt: { gte: periodStart } },
+          })
+
+          // Add Semrush fixed cost line item
+          await stripe().invoiceItems.create({
+            customer: invoiceCustomerId,
+            invoice: createdInvoice.id,
+            amount: SEMRUSH_FIXED_CENTS,
+            currency: 'usd',
+            description: 'Semrush — Herramientas SEO (fijo mensual)',
+          })
+
+          // Add each API provider as a separate line item (real cost × 3)
+          let apiTotalCents = 0
+          for (const cost of costs) {
+            const realCents = cost._sum.costCents ?? 0
+            const billedCents = realCents * MARKUP_MULTIPLIER
+            if (billedCents <= 0) continue
+
+            apiTotalCents += billedCents
+            const label = PROVIDER_LABELS[cost.provider] ?? cost.provider
+
+            await stripe().invoiceItems.create({
+              customer: invoiceCustomerId,
+              invoice: createdInvoice.id,
+              amount: billedCents,
+              currency: 'usd',
+              description: label,
+            })
+          }
+
+          // Ensure subscription quantity is 0 so it doesn't add its own charge
+          if (localSub?.stripeItemId) {
+            await stripe().subscriptionItems.update(localSub.stripeItemId, {
+              quantity: 0,
+            })
+          }
+
+          // Update local record with the billed total
+          const totalCents = SEMRUSH_FIXED_CENTS + apiTotalCents
+          if (localSub) {
+            await prisma.subscription.updateMany({
+              where: { stripeCustomerId: invoiceCustomerId },
+              data: { monthlyAmount: Math.round(totalCents / 100) },
+            })
+          }
+
+          console.log(`[Stripe Webhook] Invoice ${createdInvoice.id} — added ${costs.length + 1} line items, total $${(totalCents / 100).toFixed(2)}`)
+        } catch (err) {
+          console.error('[Stripe Webhook] Failed to add invoice line items:', err)
+        }
         break
       }
 

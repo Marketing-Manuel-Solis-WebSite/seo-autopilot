@@ -5,12 +5,42 @@ import PageHeader from '@/components/layout/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { CreditCard, Settings, XCircle, RotateCcw } from 'lucide-react'
+import { CreditCard, Settings, XCircle, RotateCcw, Receipt } from 'lucide-react'
 
 interface BillingData {
   status: string
   currentPeriodEnd?: string
   cancelAtPeriodEnd?: boolean
+}
+
+interface ProviderCost {
+  provider: string
+  realCostUsd: number
+  billedCostUsd: number
+}
+
+interface MonthCost {
+  month: string
+  semrushUsd: number
+  providers: ProviderCost[]
+  apiTotalUsd: number
+  grandTotalUsd: number
+}
+
+const PROVIDER_LABELS: Record<string, string> = {
+  'claude-opus': 'Claude Opus',
+  'claude-sonnet': 'Claude Sonnet',
+  'dataforseo': 'DataForSEO',
+}
+
+function formatMonth(month: string): string {
+  const [year, m] = month.split('-')
+  const date = new Date(Number(year), Number(m) - 1)
+  return date.toLocaleDateString('es-MX', { year: 'numeric', month: 'long' })
+}
+
+function formatUsd(amount: number): string {
+  return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
 export default function BillingPage() {
@@ -19,6 +49,8 @@ export default function BillingPage() {
   const [checkoutLoading, setCheckoutLoading] = useState(false)
   const [portalLoading, setPortalLoading] = useState(false)
   const [cancelLoading, setCancelLoading] = useState(false)
+  const [costs, setCosts] = useState<MonthCost[]>([])
+  const [costsLoading, setCostsLoading] = useState(true)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   useEffect(() => {
@@ -34,6 +66,12 @@ export default function BillingPage() {
       .then((d: BillingData) => setData(d))
       .catch(() => setData({ status: 'inactive' }))
       .finally(() => setLoading(false))
+
+    fetch('/api/stripe/costs')
+      .then(r => r.json())
+      .then((d: { months: MonthCost[] }) => setCosts(d.months ?? []))
+      .catch(() => setCosts([]))
+      .finally(() => setCostsLoading(false))
   }, [])
 
   async function handleSetupCard() {
@@ -169,6 +207,61 @@ export default function BillingPage() {
                 </Button>
               </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {!costsLoading && costs.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Receipt className="h-5 w-5" />
+              Desglose de costos mensuales
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Costos de APIs (x3) + Semrush fijo $500 USD/mes
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {costs.map(month => (
+              <div key={month.month} className="space-y-3">
+                <h3 className="text-sm font-semibold capitalize">{formatMonth(month.month)}</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-left text-muted-foreground">
+                        <th className="pb-2 font-medium">Servicio</th>
+                        <th className="pb-2 text-right font-medium">Costo real</th>
+                        <th className="pb-2 text-right font-medium">Facturado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-b border-border/50">
+                        <td className="py-2">Semrush</td>
+                        <td className="py-2 text-right text-muted-foreground">{formatUsd(500)}</td>
+                        <td className="py-2 text-right">{formatUsd(month.semrushUsd)}</td>
+                      </tr>
+                      {month.providers.map(p => (
+                        <tr key={p.provider} className="border-b border-border/50">
+                          <td className="py-2">{PROVIDER_LABELS[p.provider] ?? p.provider}</td>
+                          <td className="py-2 text-right text-muted-foreground">{formatUsd(p.realCostUsd)}</td>
+                          <td className="py-2 text-right">{formatUsd(p.billedCostUsd)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="font-semibold">
+                        <td className="pt-2">Total</td>
+                        <td className="pt-2 text-right text-muted-foreground">
+                          {formatUsd(500 + month.providers.reduce((s, p) => s + p.realCostUsd, 0))}
+                        </td>
+                        <td className="pt-2 text-right">{formatUsd(month.grandTotalUsd)}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            ))}
           </CardContent>
         </Card>
       )}
