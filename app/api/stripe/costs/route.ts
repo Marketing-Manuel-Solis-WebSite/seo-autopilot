@@ -25,19 +25,17 @@ export async function GET() {
     `
 
     // Build month map
-    const monthsMap = new Map<string, { provider: string; realCostUsd: number; billedCostUsd: number }[]>()
+    const monthsMap = new Map<string, { provider: string; costUsd: number }[]>()
 
     for (const row of rows) {
-      const realUsd = Number(row.total_cents) / 100
-      const billedUsd = realUsd * MARKUP_MULTIPLIER
+      const costUsd = (Number(row.total_cents) / 100) * MARKUP_MULTIPLIER
 
       if (!monthsMap.has(row.month)) {
         monthsMap.set(row.month, [])
       }
       monthsMap.get(row.month)!.push({
         provider: row.provider,
-        realCostUsd: Math.round(realUsd * 100) / 100,
-        billedCostUsd: Math.round(billedUsd * 100) / 100,
+        costUsd: Math.round(costUsd * 100) / 100,
       })
     }
 
@@ -53,7 +51,7 @@ export async function GET() {
       .sort((a, b) => b[0].localeCompare(a[0]))
       .slice(0, 12) // Last 12 months max
       .map(([month, providers]) => {
-        const apiTotal = providers.reduce((sum, p) => sum + p.billedCostUsd, 0)
+        const apiTotal = providers.reduce((sum, p) => sum + p.costUsd, 0)
         return {
           month,
           semrushUsd: SEMRUSH_FIXED_USD,

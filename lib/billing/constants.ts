@@ -4,7 +4,7 @@ export const SEMRUSH_FIXED_CENTS = 50000 // $500 USD
 /** Semrush fixed monthly cost in dollars */
 export const SEMRUSH_FIXED_USD = 500
 
-/** Markup multiplier applied to real API costs */
+/** Internal cost multiplier */
 export const MARKUP_MULTIPLIER = 3
 
 /** Human-readable labels for API providers */

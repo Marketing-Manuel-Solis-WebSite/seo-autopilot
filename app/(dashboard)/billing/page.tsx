@@ -15,8 +15,7 @@ interface BillingData {
 
 interface ProviderCost {
   provider: string
-  realCostUsd: number
-  billedCostUsd: number
+  costUsd: number
 }
 
 interface MonthCost {
@@ -219,7 +218,7 @@ export default function BillingPage() {
               Desglose de costos mensuales
             </CardTitle>
             <p className="text-sm text-muted-foreground">
-              Costos de APIs (x3) + Semrush fijo $500 USD/mes
+              Desglose de servicios por mes
             </p>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -231,30 +230,24 @@ export default function BillingPage() {
                     <thead>
                       <tr className="border-b border-border text-left text-muted-foreground">
                         <th className="pb-2 font-medium">Servicio</th>
-                        <th className="pb-2 text-right font-medium">Costo real</th>
-                        <th className="pb-2 text-right font-medium">Facturado</th>
+                        <th className="pb-2 text-right font-medium">Costo</th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr className="border-b border-border/50">
                         <td className="py-2">Semrush</td>
-                        <td className="py-2 text-right text-muted-foreground">{formatUsd(500)}</td>
                         <td className="py-2 text-right">{formatUsd(month.semrushUsd)}</td>
                       </tr>
                       {month.providers.map(p => (
                         <tr key={p.provider} className="border-b border-border/50">
                           <td className="py-2">{PROVIDER_LABELS[p.provider] ?? p.provider}</td>
-                          <td className="py-2 text-right text-muted-foreground">{formatUsd(p.realCostUsd)}</td>
-                          <td className="py-2 text-right">{formatUsd(p.billedCostUsd)}</td>
+                          <td className="py-2 text-right">{formatUsd(p.costUsd)}</td>
                         </tr>
                       ))}
                     </tbody>
                     <tfoot>
                       <tr className="font-semibold">
                         <td className="pt-2">Total</td>
-                        <td className="pt-2 text-right text-muted-foreground">
-                          {formatUsd(500 + month.providers.reduce((s, p) => s + p.realCostUsd, 0))}
-                        </td>
                         <td className="pt-2 text-right">{formatUsd(month.grandTotalUsd)}</td>
                       </tr>
                     </tfoot>
