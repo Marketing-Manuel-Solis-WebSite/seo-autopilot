@@ -8,24 +8,32 @@ export async function POST(request: Request) {
   const { error } = await requireAuth()
   if (error) return error
 
-  const { siteId, keyword, type, database } = await request.json()
+  try {
+    const { siteId, keyword, type, database } = await request.json()
 
-  if (type === 'overview' && keyword) {
-    const data = await getKeywordData([keyword], database)
-    return NextResponse.json(data)
-  }
-
-  if (siteId) {
-    const site = await prisma.site.findUniqueOrThrow({ where: { id: siteId } })
-    if (isGSCConfigured(site)) {
-      const rows = await getSearchAnalytics(siteId, {
-        ...getDateRange(28),
-        dimensions: ['query', 'page'],
-        rowLimit: 500,
-      })
-      return NextResponse.json(rows)
+    if (type === 'overview' && keyword) {
+      const data = await getKeywordData([keyword], database)
+      return NextResponse.json(data)
     }
-  }
 
-  return NextResponse.json([])
+    if (siteId) {
+      const site = await prisma.site.findUnique({ where: { id: siteId } })
+      if (!site) {
+        return NextResponse.json({ error: 'Site not found' }, { status: 404 })
+      }
+      if (isGSCConfigured(site)) {
+        const rows = await getSearchAnalytics(siteId, {
+          ...getDateRange(28),
+          dimensions: ['query', 'page'],
+          rowLimit: 500,
+        })
+        return NextResponse.json(rows)
+      }
+    }
+
+    return NextResponse.json([])
+  } catch (err) {
+    console.error('[Semrush Keywords]', err)
+    return NextResponse.json({ error: 'Error fetching keywords' }, { status: 500 })
+  }
 }

@@ -2,6 +2,7 @@ import { getAnthropic, MODELS } from './client'
 import type { MonitorResult, FixSuggestionResult } from './types'
 import { withRetry } from '@/lib/utils/retry'
 import { logClaudeCost } from '@/lib/costs/tracker'
+import { safeParseJSON } from '@/lib/utils/helpers'
 
 export async function claudeSonnetMonitor(input: {
   site: { id: string; domain: string; name: string }
@@ -16,7 +17,7 @@ export async function claudeSonnetMonitor(input: {
       messages: [
         {
           role: 'user',
-          content: `Eres un monitor SEO automatizado. Analiza estos datos rápidamente.
+          content: `Eres un monitor SEO automatizado de alta precision. Analiza estos datos exhaustivamente.
 
 SITIO: ${input.site.domain}
 SNAPSHOT: ${JSON.stringify(input.auditSnapshot)}
@@ -24,14 +25,26 @@ CAMBIOS DE RANKING: ${JSON.stringify(input.rankingChanges)}
 
 ${input.instruction}
 
-PRIORIDAD ABSOLUTA: Si detectas rankings cayendo más de 3 posiciones en keywords con volumen > 500, marca status como "critical".
+CRITERIOS DE EVALUACION:
+1. Rankings cayendo 3+ posiciones en keywords con volumen > 500 → status "critical"
+2. Rankings cayendo 3+ posiciones en keywords con volumen > 100 → status "warning"
+3. CTR promedio < 2% → warning (posibles problemas de meta titles/descriptions)
+4. Caidas simultaneas en multiples keywords → posible problema algoritmico, status "critical"
+5. Keywords nuevas apareciendo en top 20 → oportunidad a reportar
+6. Detectar patrones: caidas solo en mobile vs desktop, solo en ciertas categorias, etc.
 
-Responde SOLO en JSON válido:
+ANALISIS REQUERIDO:
+- Distinguir entre fluctuacion normal (1-2 pos) y caida real (3+ pos)
+- Identificar si las caidas son en keywords de alto o bajo valor
+- Detectar oportunidades de quick win (posiciones 4-10)
+- Evaluar la salud general del sitio basado en tendencias
+
+Responde SOLO en JSON valido:
 {
   "status": "ok|warning|critical",
-  "issues": ["string"],
-  "opportunities": ["string"],
-  "rankingAlerts": ["string"],
+  "issues": ["string — descripcion precisa del problema"],
+  "opportunities": ["string — oportunidad concreta y accionable"],
+  "rankingAlerts": ["string — alerta especifica con keyword, posicion anterior y actual"],
   "recommendedActions": [{"action": "string", "priority": "high|medium|low", "isDestructive": false}]
 }`,
         },
@@ -47,8 +60,7 @@ Responde SOLO en JSON válido:
     throw new Error('Claude Sonnet did not return text content')
   }
 
-  const clean = textContent.text.replace(/```json\n?|```\n?/g, '').trim()
-  return JSON.parse(clean) as MonitorResult
+  return safeParseJSON<MonitorResult>(textContent.text, 'Claude Sonnet monitor')
 }
 
 export async function claudeSonnetFixSuggestion(input: {
@@ -92,6 +104,5 @@ Responde en JSON:
     throw new Error('Claude Sonnet did not return text content')
   }
 
-  const clean = textContent.text.replace(/```json\n?|```\n?/g, '').trim()
-  return JSON.parse(clean) as FixSuggestionResult
+  return safeParseJSON<FixSuggestionResult>(textContent.text, 'Claude Sonnet fix suggestion')
 }

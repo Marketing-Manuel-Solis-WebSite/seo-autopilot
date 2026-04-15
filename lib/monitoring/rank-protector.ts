@@ -17,6 +17,11 @@ export const REQUIRES_APPROVAL = [
   'merge_pages',
   'remove_keywords',
   'restructure_navigation',
+  'change_title_tag',
+  'add_redirect',
+  'remove_page',
+  'change_robots_txt',
+  'modify_sitemap',
 ] as const
 
 export const AUTO_APPLICABLE = [
@@ -52,6 +57,7 @@ export async function protectRankings(
     if (prevPos === undefined) continue
 
     const change = prevPos - current.position
+    // Only log ranking records when there is actual movement (filter noise)
     if (change !== 0) {
       changes.push({
         keyword: current.keyword,
@@ -60,18 +66,18 @@ export async function protectRankings(
         change,
         url: current.url,
       })
-    }
 
-    await prisma.ranking.create({
-      data: {
-        siteId,
-        keywordText: current.keyword,
-        position: current.position,
-        previousPos: prevPos,
-        change,
-        url: current.url,
-      },
-    })
+      await prisma.ranking.create({
+        data: {
+          siteId,
+          keywordText: current.keyword,
+          position: current.position,
+          previousPos: prevPos,
+          change,
+          url: current.url,
+        },
+      })
+    }
   }
 
   // Save new keywords that weren't tracked before

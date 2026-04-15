@@ -6,25 +6,35 @@ export async function POST(request: Request) {
   const { user, error } = await requireAuth()
   if (error) return error
 
-  const { contentId, approved } = await request.json()
-  const userId = user.id
+  try {
+    const { contentId, approved } = await request.json()
 
-  if (!approved) {
+    if (!contentId) {
+      return NextResponse.json({ error: 'contentId is required' }, { status: 400 })
+    }
+
+    const userId = user.id
+
+    if (!approved) {
+      await prisma.content.update({
+        where: { id: contentId },
+        data: { status: 'rejected' },
+      })
+      return NextResponse.json({ status: 'rejected' })
+    }
+
     await prisma.content.update({
       where: { id: contentId },
-      data: { status: 'rejected' },
+      data: {
+        status: 'approved',
+        approvedBy: userId,
+        approvedAt: new Date(),
+      },
     })
-    return NextResponse.json({ status: 'rejected' })
+
+    return NextResponse.json({ status: 'approved', contentId })
+  } catch (err) {
+    console.error('[Content Approve]', err)
+    return NextResponse.json({ error: 'Error al procesar aprobacion' }, { status: 500 })
   }
-
-  await prisma.content.update({
-    where: { id: contentId },
-    data: {
-      status: 'approved',
-      approvedBy: userId,
-      approvedAt: new Date(),
-    },
-  })
-
-  return NextResponse.json({ status: 'approved', contentId })
 }

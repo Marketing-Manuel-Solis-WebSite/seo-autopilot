@@ -8,12 +8,26 @@ export async function POST(request: Request) {
   const { error } = await requireAuth()
   if (error) return error
 
-  const { contentId } = await request.json()
+  let contentId: string
+  try {
+    const body = await request.json()
+    contentId = body.contentId
+  } catch {
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+  }
 
-  const content = await prisma.content.findUniqueOrThrow({
+  if (!contentId) {
+    return NextResponse.json({ error: 'contentId is required' }, { status: 400 })
+  }
+
+  const content = await prisma.content.findUnique({
     where: { id: contentId },
     include: { site: true },
   })
+
+  if (!content) {
+    return NextResponse.json({ error: 'Content not found' }, { status: 404 })
+  }
 
   if (content.status !== 'approved') {
     return NextResponse.json(

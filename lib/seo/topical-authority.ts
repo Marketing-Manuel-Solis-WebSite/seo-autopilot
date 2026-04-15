@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { getAnthropic, MODELS } from '@/lib/claude/client'
+import { safeParseJSON } from '@/lib/utils/helpers'
 
 export interface TopicCluster {
   pillarTopic: string
@@ -90,8 +91,12 @@ Respond as JSON:
     return { clusters: [], orphanContent: [], totalCoverage: 0, pillarOpportunities: [] }
   }
 
-  const clean = text.text.replace(/```json\n?|```\n?/g, '').trim()
-  const topicMap: TopicMap = JSON.parse(clean)
+  let topicMap: TopicMap
+  try {
+    topicMap = safeParseJSON<TopicMap>(text.text, 'Topic map analysis')
+  } catch {
+    return { clusters: [], orphanContent: [], totalCoverage: 0, pillarOpportunities: [] }
+  }
 
   // Store the topic map in DB
   await prisma.topicMap.create({
@@ -123,10 +128,11 @@ export async function generateInternalLinkingPlan(
   siteId: string,
   newContentId: string,
 ): Promise<void> {
-  const newContent = await prisma.content.findUniqueOrThrow({
+  const newContent = await prisma.content.findUnique({
     where: { id: newContentId },
     select: { id: true, title: true, targetKeyword: true, body: true },
   })
+  if (!newContent) return
 
   const existingContent = await prisma.content.findMany({
     where: {
@@ -175,11 +181,15 @@ Respond as JSON:
   const text = response.content.find(b => b.type === 'text')
   if (!text || text.type !== 'text') return
 
-  const clean = text.text.replace(/```json\n?|```\n?/g, '').trim()
-  const plan: {
+  let plan: {
     linksToNew: Array<{ fromContentId: string; anchorText: string }>
     linksFromNew: Array<{ toContentId: string; anchorText: string }>
-  } = JSON.parse(clean)
+  }
+  try {
+    plan = safeParseJSON(text.text, 'Internal linking plan')
+  } catch {
+    return
+  }
 
   // Store internal links in DB
   const linksToCreate = [

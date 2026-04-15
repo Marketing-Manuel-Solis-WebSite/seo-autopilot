@@ -67,14 +67,19 @@ export async function analyzeVariantPerformance(variant: {
   const daysSinceStart = Math.floor((Date.now() - variant.startedAt.getTime()) / (24 * 60 * 60 * 1000))
   if (daysSinceStart < 14) return null // Not enough time
 
-  const totalImpressions = variant.impressionsA + variant.impressionsB
-  if (totalImpressions < 100) return null // Not enough data
+  // Require meaningful data per variant, not just total
+  if (variant.impressionsA < 100 || variant.impressionsB < 100) return null
 
-  const ctrA = variant.impressionsA > 0 ? variant.clicksA / variant.impressionsA : 0
-  const ctrB = variant.impressionsB > 0 ? variant.clicksB / variant.impressionsB : 0
+  const ctrA = variant.clicksA / variant.impressionsA
+  const ctrB = variant.clicksB / variant.impressionsB
 
-  const difference = Math.abs(ctrA - ctrB) / Math.max(ctrA, ctrB, 0.001)
-  if (difference < 0.1) return null // Less than 10% difference — inconclusive
+  // Statistical significance: use pooled standard error for two proportions
+  const pooledCTR = (variant.clicksA + variant.clicksB) / (variant.impressionsA + variant.impressionsB)
+  const se = Math.sqrt(pooledCTR * (1 - pooledCTR) * (1 / variant.impressionsA + 1 / variant.impressionsB))
+  const zScore = se > 0 ? Math.abs(ctrA - ctrB) / se : 0
+
+  // Require 90% confidence (z >= 1.645) to declare a winner
+  if (zScore < 1.645) return null
 
   const winner = ctrA >= ctrB ? 'A' : 'B'
   const winningTitle = winner === 'A' ? variant.variantA : variant.variantB
@@ -91,9 +96,10 @@ export async function analyzeVariantPerformance(variant: {
   // If B wins, apply via CMS adapter
   if (winner === 'B') {
     try {
-      const site = await prisma.site.findUniqueOrThrow({
+      const site = await prisma.site.findUnique({
         where: { id: variant.siteId },
       })
+      if (!site) return { winner, ctrA, ctrB }
       const adapter = getCMSAdapter(site)
       const slug = variant.url ? new URL(variant.url, `https://${site.domain}`).pathname.replace(/^\//, '').replace(/\/$/, '') : ''
       await adapter.applyMetaFix(site, slug, winningTitle, '')

@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma'
 import { getAnthropic, MODELS } from '@/lib/claude/client'
 import { withRetry } from '@/lib/utils/retry'
 import { getSERPResults, type DFSSerpItem } from '@/lib/dataforseo/client'
+import { safeParseJSON } from '@/lib/utils/helpers'
 
 export type SnippetFormat = 'paragraph' | 'list' | 'table' | 'faq' | 'none'
 
@@ -69,8 +70,11 @@ Respond as JSON:
   const text = response.content.find(b => b.type === 'text')
   if (!text || text.type !== 'text') return null
 
-  const clean = text.text.replace(/```json\n?|```\n?/g, '').trim()
-  return JSON.parse(clean) as SnippetOpportunity
+  try {
+    return safeParseJSON<SnippetOpportunity>(text.text, 'Featured snippet analysis')
+  } catch {
+    return null
+  }
 }
 
 export async function generateSnippetOptimizedSection(

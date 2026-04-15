@@ -3,6 +3,7 @@ import { claudeOpusGenerateContent } from '@/lib/claude/opus'
 import { analyzeSERP } from '@/lib/serp/analyzer'
 import { getAnthropic, MODELS } from '@/lib/claude/client'
 import { withRetry } from '@/lib/utils/retry'
+import { countWordsInHTML } from '@/lib/utils/helpers'
 
 export interface StaleContent {
   contentId: string
@@ -152,7 +153,7 @@ Return the COMPLETE refreshed HTML body. No JSON wrapper — just raw HTML.`,
     where: { id: content.contentId },
     data: {
       body: refreshedBody,
-      wordCount: refreshedBody.split(/\s+/).length,
+      wordCount: countWordsInHTML(refreshedBody),
       status: 'pending_approval',
     },
   })

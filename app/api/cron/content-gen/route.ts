@@ -5,6 +5,7 @@ import { analyzeSERP } from '@/lib/serp/analyzer'
 import { generateInternalLinkingPlan } from '@/lib/seo/topical-authority'
 import { triggerAlert } from '@/lib/monitoring/alert-engine'
 import { analyzeSnippetOpportunity, generateSnippetOptimizedSection } from '@/lib/seo/featured-snippets'
+import { countWordsInHTML } from '@/lib/utils/helpers'
 import type { TopicMap } from '@/lib/seo/topical-authority'
 
 const MAX_DAILY_CONTENT = parseInt(process.env.MAX_DAILY_CONTENT ?? '7', 10)
@@ -124,7 +125,7 @@ export async function GET(request: Request) {
             ...(snippetData ? { snippetOptimization: snippetData } : {}),
           } as never,
           seoScore: generated.seoScore,
-          wordCount: finalBody.split(/\s+/).length,
+          wordCount: countWordsInHTML(finalBody),
           status: 'pending_approval',
         },
       })

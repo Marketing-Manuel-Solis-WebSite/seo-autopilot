@@ -43,6 +43,7 @@ export default function FixCard({ fix, onAction }: FixCardProps) {
         body: JSON.stringify({ fixId: fix.id, approved: true }),
       })
       if (!res.ok) throw new Error(`Error ${res.status}`)
+      setLoading(false)
       onAction(fix.id, 'approved')
     } catch (err) {
       console.error('[FixCard] approve failed:', err)
@@ -61,6 +62,7 @@ export default function FixCard({ fix, onAction }: FixCardProps) {
         body: JSON.stringify({ fixId: fix.id, approved: false }),
       })
       if (!res.ok) throw new Error(`Error ${res.status}`)
+      setLoading(false)
       onAction(fix.id, 'rejected')
     } catch (err) {
       console.error('[FixCard] reject failed:', err)

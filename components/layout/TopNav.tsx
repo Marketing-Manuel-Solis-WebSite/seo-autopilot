@@ -1,14 +1,12 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Bell, Search, Activity } from 'lucide-react'
+import { Bell } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAlerts } from '@/hooks/useAlerts'
 import { Check, Eye } from 'lucide-react'
-import { severityColor, formatDateTime } from '@/lib/utils/helpers'
+import { formatDateTime } from '@/lib/utils/helpers'
 
 interface TopNavProps {
   systemStatus: 'ok' | 'warning' | 'critical'
@@ -23,7 +21,7 @@ export default function TopNav({ systemStatus, alertCount }: TopNavProps) {
   const statusConfig = {
     ok: { color: 'bg-green-500', label: 'Todos los sistemas OK' },
     warning: { color: 'bg-yellow-500', label: 'Warnings detectados' },
-    critical: { color: 'bg-red-500', label: 'Alertas críticas activas' },
+    critical: { color: 'bg-red-500', label: 'Alertas criticas activas' },
   }
 
   const status = statusConfig[systemStatus]
@@ -56,18 +54,6 @@ export default function TopNav({ systemStatus, alertCount }: TopNavProps) {
       </div>
 
       <div className="flex items-center gap-2">
-        <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar sitios, keywords..."
-            className="w-64 pl-9"
-          />
-        </div>
-
-        <Button variant="ghost" size="icon" className="relative">
-          <Activity className="h-4 w-4" />
-        </Button>
-
         <div className="relative" ref={bellRef}>
           <Button
             variant="ghost"
@@ -115,7 +101,7 @@ export default function TopNav({ systemStatus, alertCount }: TopNavProps) {
                           {alert.severity}
                         </Badge>
                         <span className="text-xs text-muted-foreground truncate">
-                          {alert.site.domain}
+                          {alert.site?.domain ?? ''}
                         </span>
                       </div>
                       <p className="mt-0.5 text-sm font-medium leading-tight">{alert.title}</p>
@@ -133,7 +119,7 @@ export default function TopNav({ systemStatus, alertCount }: TopNavProps) {
                         className="h-6 px-2 text-xs gap-1"
                         onClick={() => markRead(alert.id)}
                       >
-                        <Eye className="h-3 w-3" /> Leída
+                        <Eye className="h-3 w-3" /> Leida
                       </Button>
                     )}
                     <Button

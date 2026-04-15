@@ -1,6 +1,7 @@
 import { getSERPResults, getKeywordData, type DFSSerpItem } from '@/lib/dataforseo/client'
 import { getAnthropic, MODELS } from '@/lib/claude/client'
 import { withRetry } from '@/lib/utils/retry'
+import { safeParseJSON } from '@/lib/utils/helpers'
 
 export interface SERPResult {
   position: number
@@ -108,6 +109,15 @@ Respond as JSON:
     }
   }
 
-  const clean = text.text.replace(/```json\n?|```\n?/g, '').trim()
-  return JSON.parse(clean)
+  try {
+    return safeParseJSON(text.text, 'SERP analysis')
+  } catch {
+    return {
+      dominantContentFormat: 'article' as const,
+      averageWordCount: 1500,
+      featuredSnippetExists: false,
+      featuredSnippetFormat: null,
+      contentGaps: [],
+    }
+  }
 }

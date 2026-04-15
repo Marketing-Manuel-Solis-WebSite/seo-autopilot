@@ -56,13 +56,22 @@ export async function auditNAPConsistency(
   const bodyTexts = allContent.map(c => c.body.toLowerCase())
 
   for (const location of locations) {
-    const phone = location.phone.replace(/[\s\-().]/g, '')
-    const phoneFormats = [
-      location.phone,
-      phone,
-      phone.replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2-$3'),
-      phone.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3'),
-    ]
+    const phone = location.phone.replace(/[\s\-().+]/g, '')
+    const phoneFormats = [location.phone, phone]
+    // Add formatted variants only for 10-digit US numbers
+    if (/^\d{10}$/.test(phone)) {
+      phoneFormats.push(
+        phone.replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2-$3'),
+        phone.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3'),
+      )
+    } else if (/^1\d{10}$/.test(phone)) {
+      const local = phone.slice(1)
+      phoneFormats.push(
+        local,
+        local.replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2-$3'),
+        local.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3'),
+      )
+    }
 
     // Check if phone appears consistently
     const phoneFound = bodyTexts.some(text =>

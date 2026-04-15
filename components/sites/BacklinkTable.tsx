@@ -32,7 +32,7 @@ export default function BacklinkTable({ backlinks }: BacklinkTableProps) {
           <TableRow key={bl.id}>
             <TableCell className="max-w-48 truncate">
               <a href={bl.sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-blue-500 hover:underline">
-                {new URL(bl.sourceUrl).hostname}
+                {(() => { try { return new URL(bl.sourceUrl).hostname } catch { return bl.sourceUrl } })()}
                 <ExternalLink className="h-3 w-3" />
               </a>
             </TableCell>

@@ -24,24 +24,33 @@ export async function POST(request: Request) {
   const { error } = await requireAuth()
   if (error) return error
 
-  const body = await request.json()
+  try {
+    const body = await request.json()
 
-  const location = await prisma.location.create({
-    data: {
-      siteId: body.siteId,
-      name: body.name,
-      address: body.address,
-      city: body.city,
-      state: body.state,
-      zip: body.zip,
-      phone: body.phone,
-      email: body.email,
-      businessType: body.businessType ?? 'LocalBusiness',
-      gbpPlaceId: body.gbpPlaceId,
-    },
-  })
+    if (!body.siteId || !body.name || !body.address || !body.city || !body.state || !body.zip || !body.phone) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    }
 
-  return NextResponse.json(location, { status: 201 })
+    const location = await prisma.location.create({
+      data: {
+        siteId: body.siteId,
+        name: body.name,
+        address: body.address,
+        city: body.city,
+        state: body.state,
+        zip: body.zip,
+        phone: body.phone,
+        email: body.email,
+        businessType: body.businessType ?? 'LocalBusiness',
+        gbpPlaceId: body.gbpPlaceId,
+      },
+    })
+
+    return NextResponse.json(location, { status: 201 })
+  } catch (err) {
+    console.error('[Locations POST]', err)
+    return NextResponse.json({ error: 'Error creating location' }, { status: 500 })
+  }
 }
 
 export async function DELETE(request: Request) {

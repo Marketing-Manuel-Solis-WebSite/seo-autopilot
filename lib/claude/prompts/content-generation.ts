@@ -12,13 +12,13 @@ export function buildContentGenerationPrompt(input: {
 }) {
   const serpSection = input.serpAnalysis
     ? `
-ANÁLISIS SERP — Los siguientes 10 resultados actualmente rankean para "${input.targetKeyword}":
+ANALISIS SERP — Los siguientes 10 resultados actualmente rankean para "${input.targetKeyword}":
 ${input.serpAnalysis.top10Results.map((r, i) => `${i + 1}. ${r.title} — ${r.url}`).join('\n')}
 
-Tu artículo DEBE SER MÁS COMPLETO que todos ellos.
-- Promedio de palabras del top 10: ${input.serpAnalysis.averageWordCount}. Escribe mínimo ${Math.round(input.serpAnalysis.averageWordCount * 1.3)} palabras.
+Tu articulo DEBE SER MAS COMPLETO que todos ellos.
+- Promedio de palabras del top 10: ${input.serpAnalysis.averageWordCount}. Escribe minimo ${Math.round(input.serpAnalysis.averageWordCount * 1.3)} palabras.
 - Formato dominante: ${input.serpAnalysis.dominantContentFormat}. Usa este formato.
-- Featured snippet: ${input.serpAnalysis.featuredSnippetExists ? `Sí, formato "${input.serpAnalysis.featuredSnippetFormat}". Optimiza para capturar el snippet.` : 'No detectado.'}
+- Featured snippet: ${input.serpAnalysis.featuredSnippetExists ? `Si, formato "${input.serpAnalysis.featuredSnippetFormat}". Optimiza para capturar el snippet.` : 'No detectado.'}
 - Gaps de contenido no cubiertos por el top 10: ${input.serpAnalysis.contentGaps.join(', ')}. CUBRE TODOS estos gaps.
 - Competidores principales: ${input.serpAnalysis.topCompetitorDomains.join(', ')}
 `
@@ -26,17 +26,17 @@ Tu artículo DEBE SER MÁS COMPLETO que todos ellos.
 
   const topicMapSection = input.topicMapContext && input.topicMapContext.clusters.length > 0
     ? `
-TOPICAL AUTHORITY CONTEXT:
-${input.topicMapContext.clusters.map(c => `- This article should strengthen the topic cluster: "${c.pillarTopic}" (pillar keyword: "${c.pillarKeyword}")
-  - Coverage score: ${c.coverageScore}/100
-  - Pillar page exists: ${c.hasPillarPage ? 'Yes' : 'No — this article may serve as a pillar page'}
-  - Related subtopics to reference: ${c.subtopics.filter(s => s.covered).map(s => s.keyword).join(', ')}`).join('\n')}
-${input.topicMapContext.pillarOpportunities.length > 0 ? `\nPillar opportunities to support: ${input.topicMapContext.pillarOpportunities.map(p => `"${p.topic}" (${p.estimatedImpact} impact)`).join(', ')}` : ''}
-Ensure this article reinforces the topical cluster through semantic relevance and internal linking opportunities.
+CONTEXTO DE AUTORIDAD TOPICAL:
+${input.topicMapContext.clusters.map(c => `- Este articulo debe fortalecer el cluster: "${c.pillarTopic}" (keyword pilar: "${c.pillarKeyword}")
+  - Cobertura actual: ${c.coverageScore}/100
+  - Pagina pilar existe: ${c.hasPillarPage ? 'Si' : 'No — este articulo puede servir como pagina pilar'}
+  - Subtemas relacionados a referenciar: ${c.subtopics.filter(s => s.covered).map(s => s.keyword).join(', ')}`).join('\n')}
+${input.topicMapContext.pillarOpportunities.length > 0 ? `\nOportunidades pilar a soportar: ${input.topicMapContext.pillarOpportunities.map(p => `"${p.topic}" (impacto ${p.estimatedImpact})`).join(', ')}` : ''}
+Asegura que este articulo refuerce el cluster topical a traves de relevancia semantica y oportunidades de enlace interno.
 `
     : ''
 
-  return `Eres un experto en SEO y copywriting. Genera contenido de máxima calidad.
+  return `Eres un experto en SEO y copywriting de nivel mundial. Genera contenido de la mas alta calidad.
 
 CONTEXTO DEL SITIO: ${JSON.stringify(input.siteContext)}
 BRIEF: ${JSON.stringify(input.contentBrief)}
@@ -45,32 +45,39 @@ TIPO DE CONTENIDO: ${input.contentType}
 PALABRAS OBJETIVO: ${input.wordCount}
 ${serpSection}${topicMapSection}
 GENERA:
-1. Un artículo completo optimizado para SEO
-2. Meta title (60 chars máx)
-3. Meta description (160 chars máx)
-4. Schema markup JSON-LD apropiado
-5. Internal linking suggestions
+1. Un articulo completo optimizado para SEO con HTML semantico
+2. Meta title (MAXIMO 60 caracteres, incluir keyword al inicio)
+3. Meta description (MAXIMO 160 caracteres, incluir keyword y CTA)
+4. Schema markup JSON-LD apropiado (Article, BlogPosting, FAQPage segun corresponda)
+5. Sugerencias de enlaces internos con anchor text especifico
 
-REGLAS:
-- Keyword density natural: 1-2%
-- Headings H2/H3 con variaciones semánticas
-- Contenido E-E-A-T (Experience, Expertise, Authoritativeness, Trustworthiness)
-- Sin keyword stuffing
-- Incluir tabla de contenidos si > 1500 palabras
-${input.serpAnalysis?.featuredSnippetFormat === 'list' ? '- Incluir una lista resumen al inicio para capturar featured snippet' : ''}
+REGLAS CRITICAS:
+- Keyword density natural: 1-2% (no keyword stuffing)
+- Headings H2/H3 con variaciones semanticas y LSI keywords
+- Contenido E-E-A-T completo:
+  * Experience: incluir ejemplos practicos y casos de uso
+  * Expertise: datos, estadisticas y conocimiento profundo
+  * Authoritativeness: referencias a fuentes confiables
+  * Trustworthiness: informacion precisa y verificable
+- Incluir tabla de contenidos con IDs para enlace directo si > 1500 palabras
+- Parrafo introductorio de 50-80 palabras que resuma el valor del articulo
+- Conclusion con CTA y resumen de puntos clave
+- Imagenes: incluir alt text descriptivo con keyword en al menos una imagen
+- HTML semantico: usar <article>, <section>, <figure>, <figcaption> correctamente
+${input.serpAnalysis?.featuredSnippetFormat === 'list' ? '- Incluir una lista resumen al inicio (5-8 items) para capturar featured snippet' : ''}
 ${input.serpAnalysis?.featuredSnippetFormat === 'table' ? '- Incluir una tabla comparativa/resumen para capturar featured snippet' : ''}
-${input.serpAnalysis?.featuredSnippetFormat === 'paragraph' ? '- Incluir un párrafo definitorio claro al inicio (~50 palabras) para capturar featured snippet' : ''}
+${input.serpAnalysis?.featuredSnippetFormat === 'paragraph' ? '- Incluir un parrafo definitorio claro al inicio (~50 palabras) para capturar featured snippet' : ''}
 
 Responde en JSON:
 {
   "title": "string",
-  "slug": "string",
-  "metaTitle": "string",
-  "metaDescription": "string",
-  "body": "HTML completo del artículo",
-  "schema": {},
-  "internalLinkSuggestions": [],
-  "estimatedReadTime": "string",
+  "slug": "string — URL-friendly, lowercase, sin caracteres especiales",
+  "metaTitle": "string — MAXIMO 60 caracteres",
+  "metaDescription": "string — MAXIMO 160 caracteres con CTA",
+  "body": "HTML completo del articulo con semantica correcta",
+  "schema": { "@context": "https://schema.org", "@type": "Article|BlogPosting", ... },
+  "internalLinkSuggestions": ["keyword/frase a enlazar — /url-destino"],
+  "estimatedReadTime": "X min",
   "seoScore": 0-100
 }`
 }

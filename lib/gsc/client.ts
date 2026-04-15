@@ -2,10 +2,11 @@ import { google } from 'googleapis'
 import { prisma } from '@/lib/prisma'
 
 async function getOAuthClient(siteId: string) {
-  const site = await prisma.site.findUniqueOrThrow({
+  const site = await prisma.site.findUnique({
     where: { id: siteId },
     select: { gscCredentials: true, gscPropertyUrl: true },
   })
+  if (!site) throw new Error(`Site not found: ${siteId}`)
   if (!site.gscCredentials) throw new Error(`No GSC credentials for site ${siteId}`)
 
   const auth = new google.auth.OAuth2(
@@ -23,7 +24,8 @@ async function getOAuthClient(siteId: string) {
       })
     }
   })
-  return { auth, propertyUrl: site.gscPropertyUrl! }
+  if (!site.gscPropertyUrl) throw new Error(`No GSC property URL for site ${siteId}`)
+  return { auth, propertyUrl: site.gscPropertyUrl }
 }
 
 export interface GSCRow {

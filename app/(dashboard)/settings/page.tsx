@@ -7,17 +7,25 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus } from 'lucide-react'
+import { Plus, Globe, Cpu, MapPin, ExternalLink } from 'lucide-react'
+
+interface SiteData {
+  id: string
+  name: string
+  domain: string
+  gscPropertyUrl: string | null
+  gscCredentials: unknown
+}
 
 export default function SettingsPage() {
   const [newSite, setNewSite] = useState({ name: '', domain: '', url: '', cmsType: '', cmsApiUrl: '', cmsApiKey: '', targetCountry: 'us', targetLanguage: 'en' })
   const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState('')
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [newLocation, setNewLocation] = useState({ siteId: '', name: '', address: '', city: '', state: '', zip: '', phone: '', email: '', businessType: 'LegalService', gbpPlaceId: '' })
   const [locLoading, setLocLoading] = useState(false)
-  const [locMessage, setLocMessage] = useState('')
+  const [locMessage, setLocMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [gscResult, setGscResult] = useState<string | null>(null)
-  const [sites, setSites] = useState<{ id: string; name: string; domain: string; gscPropertyUrl: string | null; gscCredentials: unknown }[]>([])
+  const [sites, setSites] = useState<SiteData[]>([])
   const [disconnecting, setDisconnecting] = useState<string | null>(null)
 
   function loadSites() {
@@ -33,12 +41,17 @@ export default function SettingsPage() {
   async function handleDisconnectGSC(siteId: string) {
     setDisconnecting(siteId)
     try {
-      await fetch('/api/auth/gsc/disconnect', {
+      const res = await fetch('/api/auth/gsc/disconnect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ siteId }),
       })
+      if (!res.ok) {
+        console.error('Failed to disconnect GSC')
+      }
       loadSites()
+    } catch (err) {
+      console.error('Error disconnecting GSC:', err)
     } finally {
       setDisconnecting(null)
     }
@@ -47,7 +60,7 @@ export default function SettingsPage() {
   async function handleAddSite(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
-    setMessage('')
+    setMessage(null)
     try {
       const res = await fetch('/api/sites', {
         method: 'POST',
@@ -55,47 +68,79 @@ export default function SettingsPage() {
         body: JSON.stringify({ ...newSite, url: newSite.url || `https://${newSite.domain}` }),
       })
       if (res.ok) {
-        setMessage('Sitio agregado correctamente')
+        setMessage({ type: 'success', text: 'Sitio agregado correctamente' })
         setNewSite({ name: '', domain: '', url: '', cmsType: '', cmsApiUrl: '', cmsApiKey: '', targetCountry: 'us', targetLanguage: 'en' })
+        loadSites()
       } else {
-        setMessage('Error al agregar sitio')
+        const data = await res.json().catch(() => ({}))
+        setMessage({ type: 'error', text: data.error || 'Error al agregar sitio' })
       }
+    } catch {
+      setMessage({ type: 'error', text: 'Error de conexion' })
     } finally {
       setLoading(false)
     }
   }
 
+  async function handleAddLocation(e: React.FormEvent) {
+    e.preventDefault()
+    setLocLoading(true)
+    setLocMessage(null)
+    try {
+      const res = await fetch('/api/locations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newLocation),
+      })
+      if (res.ok) {
+        setLocMessage({ type: 'success', text: 'Ubicacion agregada correctamente' })
+        setNewLocation({ siteId: newLocation.siteId, name: '', address: '', city: '', state: '', zip: '', phone: '', email: '', businessType: 'LegalService', gbpPlaceId: '' })
+      } else {
+        const data = await res.json().catch(() => ({}))
+        setLocMessage({ type: 'error', text: data.error || 'Error al agregar ubicacion' })
+      }
+    } catch {
+      setLocMessage({ type: 'error', text: 'Error de conexion' })
+    } finally {
+      setLocLoading(false)
+    }
+  }
+
   return (
     <div className="space-y-6 p-6">
-      <PageHeader title="Configuración" description="Gestión del sistema Solis SEO" />
+      <PageHeader title="Configuracion" description="Gestion del sistema Solis SEO" />
 
+      {/* ── ADD SITE ── */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Agregar nuevo sitio</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Globe className="h-4 w-4" />
+            Agregar nuevo sitio
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleAddSite} className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <label className="text-sm font-medium">Nombre</label>
               <Input value={newSite.name} onChange={e => setNewSite(s => ({ ...s, name: e.target.value }))} placeholder="Mi sitio web" required />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <label className="text-sm font-medium">Dominio</label>
               <Input value={newSite.domain} onChange={e => setNewSite(s => ({ ...s, domain: e.target.value }))} placeholder="ejemplo.com" required />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <label className="text-sm font-medium">URL completa</label>
               <Input value={newSite.url} onChange={e => setNewSite(s => ({ ...s, url: e.target.value }))} placeholder="https://ejemplo.com" />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">País objetivo</label>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Pais objetivo</label>
               <Select value={newSite.targetCountry} onValueChange={v => setNewSite(s => ({ ...s, targetCountry: v }))}>
-                <SelectTrigger><SelectValue placeholder="País" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Pais" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="us">United States</SelectItem>
                   <SelectItem value="uk">United Kingdom</SelectItem>
-                  <SelectItem value="es">España</SelectItem>
-                  <SelectItem value="mx">México</SelectItem>
+                  <SelectItem value="es">Espana</SelectItem>
+                  <SelectItem value="mx">Mexico</SelectItem>
                   <SelectItem value="ar">Argentina</SelectItem>
                   <SelectItem value="co">Colombia</SelectItem>
                   <SelectItem value="de">Deutschland</SelectItem>
@@ -105,21 +150,21 @@ export default function SettingsPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <label className="text-sm font-medium">Idioma</label>
               <Select value={newSite.targetLanguage} onValueChange={v => setNewSite(s => ({ ...s, targetLanguage: v }))}>
                 <SelectTrigger><SelectValue placeholder="Idioma" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="en">English</SelectItem>
-                  <SelectItem value="es">Español</SelectItem>
+                  <SelectItem value="es">Espanol</SelectItem>
                   <SelectItem value="de">Deutsch</SelectItem>
-                  <SelectItem value="fr">Français</SelectItem>
-                  <SelectItem value="pt">Português</SelectItem>
+                  <SelectItem value="fr">Francais</SelectItem>
+                  <SelectItem value="pt">Portugues</SelectItem>
                   <SelectItem value="it">Italiano</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <label className="text-sm font-medium">CMS</label>
               <Select value={newSite.cmsType} onValueChange={v => setNewSite(s => ({ ...s, cmsType: v }))}>
                 <SelectTrigger><SelectValue placeholder="Tipo de CMS" /></SelectTrigger>
@@ -134,7 +179,7 @@ export default function SettingsPage() {
             </div>
             {newSite.cmsType && (
               <>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <label className="text-sm font-medium">
                     {newSite.cmsType === 'github' ? 'GitHub repo (org/repo-name)' : newSite.cmsType === 'webflow' ? 'Collection ID' : 'CMS API URL'}
                   </label>
@@ -149,7 +194,7 @@ export default function SettingsPage() {
                     }
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <label className="text-sm font-medium">
                     {newSite.cmsType === 'github' ? 'Blog folder path' : 'CMS API Key'}
                   </label>
@@ -166,70 +211,66 @@ export default function SettingsPage() {
                 </div>
               </>
             )}
-            <div className="sm:col-span-2">
+            <div className="sm:col-span-2 flex items-center gap-3">
               <Button type="submit" disabled={loading} className="gap-2">
                 <Plus className="h-4 w-4" />
                 {loading ? 'Agregando...' : 'Agregar sitio'}
               </Button>
-              {message && <p className="mt-2 text-sm text-muted-foreground">{message}</p>}
+              {message && (
+                <p className={`text-sm ${message.type === 'success' ? 'text-green-500' : 'text-red-500'}`}>
+                  {message.text}
+                </p>
+              )}
             </div>
           </form>
         </CardContent>
       </Card>
 
+      {/* ── SYSTEM CONFIG ── */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Configuración del sistema</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Cpu className="h-4 w-4" />
+            Configuracion del sistema
+          </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between rounded-md border p-3">
-            <div>
-              <p className="text-sm font-medium">Monitoreo automático</p>
-              <p className="text-xs text-muted-foreground">Claude Sonnet analiza cada hora</p>
+        <CardContent className="space-y-2">
+          {[
+            { name: 'Monitoreo automatico', desc: 'Claude Sonnet analiza cada hora', active: true },
+            { name: 'Auditoria profunda semanal', desc: 'Claude Opus cada lunes a las 2am', active: true },
+            { name: 'Generacion de contenido diaria', desc: 'Claude Opus cada dia a las 8am', active: true },
+            { name: 'Check de rankings', desc: 'GSC + DataForSEO cada 6 horas', active: true },
+            { name: 'Content Refresh', desc: 'Claude Opus cada miercoles a las 6am', active: true },
+          ].map(item => (
+            <div key={item.name} className="flex items-center justify-between rounded-lg border p-3">
+              <div>
+                <p className="text-sm font-medium">{item.name}</p>
+                <p className="text-xs text-muted-foreground">{item.desc}</p>
+              </div>
+              <Badge className="bg-green-500/10 text-green-500 border-green-500/20">Activo</Badge>
             </div>
-            <Badge variant="default" className="bg-green-500/10 text-green-500">Activo</Badge>
-          </div>
-          <div className="flex items-center justify-between rounded-md border p-3">
-            <div>
-              <p className="text-sm font-medium">Auditoría profunda semanal</p>
-              <p className="text-xs text-muted-foreground">Claude Opus cada lunes a las 2am</p>
-            </div>
-            <Badge variant="default" className="bg-green-500/10 text-green-500">Activo</Badge>
-          </div>
-          <div className="flex items-center justify-between rounded-md border p-3">
-            <div>
-              <p className="text-sm font-medium">Generación de contenido diaria</p>
-              <p className="text-xs text-muted-foreground">Claude Opus cada día a las 8am</p>
-            </div>
-            <Badge variant="default" className="bg-green-500/10 text-green-500">Activo</Badge>
-          </div>
-          <div className="flex items-center justify-between rounded-md border p-3">
-            <div>
-              <p className="text-sm font-medium">Check de rankings</p>
-              <p className="text-xs text-muted-foreground">GSC + DataForSEO cada 6 horas</p>
-            </div>
-            <Badge variant="default" className="bg-green-500/10 text-green-500">Activo</Badge>
-          </div>
-          <div className="flex items-center justify-between rounded-md border p-3">
-            <div>
-              <p className="text-sm font-medium">Content Refresh</p>
-              <p className="text-xs text-muted-foreground">Claude Opus cada miércoles a las 6am</p>
-            </div>
-            <Badge variant="default" className="bg-green-500/10 text-green-500">Activo</Badge>
-          </div>
+          ))}
         </CardContent>
       </Card>
 
+      {/* ── GOOGLE SEARCH CONSOLE ── */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Google Search Console</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <ExternalLink className="h-4 w-4" />
+            Google Search Console
+          </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
             Conecta GSC para habilitar monitoreo de rankings, CTR Optimizer y A/B testing de meta titles.
           </p>
-          {gscResult === 'connected' && <p className="text-sm text-green-500">GSC conectado exitosamente.</p>}
-          {gscResult === 'error' && <p className="text-sm text-red-500">Error al conectar GSC. Intenta de nuevo.</p>}
+          {gscResult === 'connected' && (
+            <div className="rounded-md bg-green-500/10 p-3 text-sm text-green-500">GSC conectado exitosamente.</div>
+          )}
+          {gscResult === 'error' && (
+            <div className="rounded-md bg-red-500/10 p-3 text-sm text-red-500">Error al conectar GSC. Intenta de nuevo.</div>
+          )}
 
           {sites.length === 0 && (
             <p className="text-sm text-muted-foreground">No hay sitios configurados. Agrega uno arriba primero.</p>
@@ -238,13 +279,13 @@ export default function SettingsPage() {
           {sites.map(s => {
             const isConnected = !!s.gscCredentials && !!s.gscPropertyUrl
             return (
-              <div key={s.id} className="flex items-center justify-between rounded-md border p-3">
+              <div key={s.id} className="flex items-center justify-between rounded-lg border p-3">
                 <div className="flex items-center gap-3">
-                  <div className={`h-2.5 w-2.5 rounded-full ${isConnected ? 'bg-green-500' : 'bg-gray-400'}`} />
+                  <div className={`h-2.5 w-2.5 rounded-full ${isConnected ? 'bg-green-500' : 'bg-muted-foreground/30'}`} />
                   <div>
-                    <p className="text-sm font-medium">{s.name} ({s.domain})</p>
+                    <p className="text-sm font-medium">{s.name} <span className="text-muted-foreground">({s.domain})</span></p>
                     {isConnected
-                      ? <p className="text-xs text-green-600">Conectado: {s.gscPropertyUrl}</p>
+                      ? <p className="text-xs text-green-600 dark:text-green-400">Conectado: {s.gscPropertyUrl}</p>
                       : <p className="text-xs text-muted-foreground">No conectado</p>
                     }
                   </div>
@@ -273,64 +314,64 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
+      {/* ── ADD LOCATION (Local SEO) ── */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Agregar ubicación (Local SEO)</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <MapPin className="h-4 w-4" />
+            Agregar ubicacion (Local SEO)
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={async (e) => {
-            e.preventDefault()
-            setLocLoading(true)
-            setLocMessage('')
-            try {
-              const res = await fetch('/api/locations', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(newLocation),
-              })
-              if (res.ok) {
-                setLocMessage('Ubicación agregada correctamente')
-                setNewLocation({ siteId: '', name: '', address: '', city: '', state: '', zip: '', phone: '', email: '', businessType: 'LegalService', gbpPlaceId: '' })
-              } else {
-                setLocMessage('Error al agregar ubicación')
-              }
-            } finally {
-              setLocLoading(false)
-            }
-          }} className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Site ID</label>
-              <Input value={newLocation.siteId} onChange={e => setNewLocation(s => ({ ...s, siteId: e.target.value }))} placeholder="ID del sitio" required />
+          <form onSubmit={handleAddLocation} className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5 sm:col-span-2">
+              <label className="text-sm font-medium">Sitio</label>
+              {sites.length > 0 ? (
+                <Select value={newLocation.siteId} onValueChange={v => setNewLocation(s => ({ ...s, siteId: v }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona un sitio" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sites.map(s => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name} ({s.domain})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="text-sm text-muted-foreground">Agrega un sitio primero para poder agregar ubicaciones.</p>
+              )}
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Nombre de ubicación</label>
-              <Input value={newLocation.name} onChange={e => setNewLocation(s => ({ ...s, name: e.target.value }))} placeholder="Manuel Solís - Houston Office" required />
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Nombre de ubicacion</label>
+              <Input value={newLocation.name} onChange={e => setNewLocation(s => ({ ...s, name: e.target.value }))} placeholder="Houston Office" required />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Dirección</label>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Direccion</label>
               <Input value={newLocation.address} onChange={e => setNewLocation(s => ({ ...s, address: e.target.value }))} placeholder="123 Main St" required />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <label className="text-sm font-medium">Ciudad</label>
               <Input value={newLocation.city} onChange={e => setNewLocation(s => ({ ...s, city: e.target.value }))} placeholder="Houston" required />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <label className="text-sm font-medium">Estado</label>
               <Input value={newLocation.state} onChange={e => setNewLocation(s => ({ ...s, state: e.target.value }))} placeholder="TX" required />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <label className="text-sm font-medium">ZIP</label>
               <Input value={newLocation.zip} onChange={e => setNewLocation(s => ({ ...s, zip: e.target.value }))} placeholder="77001" required />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Teléfono</label>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Telefono</label>
               <Input value={newLocation.phone} onChange={e => setNewLocation(s => ({ ...s, phone: e.target.value }))} placeholder="(713) 555-0100" required />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <label className="text-sm font-medium">Email</label>
               <Input value={newLocation.email} onChange={e => setNewLocation(s => ({ ...s, email: e.target.value }))} placeholder="office@example.com" />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <label className="text-sm font-medium">Tipo de negocio</label>
               <Select value={newLocation.businessType} onValueChange={v => setNewLocation(s => ({ ...s, businessType: v }))}>
                 <SelectTrigger><SelectValue placeholder="Tipo" /></SelectTrigger>
@@ -345,16 +386,20 @@ export default function SettingsPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <label className="text-sm font-medium">GBP Place ID</label>
               <Input value={newLocation.gbpPlaceId} onChange={e => setNewLocation(s => ({ ...s, gbpPlaceId: e.target.value }))} placeholder="ChIJ... (opcional)" />
             </div>
-            <div className="sm:col-span-2">
-              <Button type="submit" disabled={locLoading} className="gap-2">
+            <div className="sm:col-span-2 flex items-center gap-3">
+              <Button type="submit" disabled={locLoading || !newLocation.siteId} className="gap-2">
                 <Plus className="h-4 w-4" />
-                {locLoading ? 'Agregando...' : 'Agregar ubicación'}
+                {locLoading ? 'Agregando...' : 'Agregar ubicacion'}
               </Button>
-              {locMessage && <p className="mt-2 text-sm text-muted-foreground">{locMessage}</p>}
+              {locMessage && (
+                <p className={`text-sm ${locMessage.type === 'success' ? 'text-green-500' : 'text-red-500'}`}>
+                  {locMessage.text}
+                </p>
+              )}
             </div>
           </form>
         </CardContent>

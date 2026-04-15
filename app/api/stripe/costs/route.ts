@@ -1,6 +1,12 @@
 import { prisma } from '@/lib/prisma'
 import { requireAuth } from '@/lib/supabase/route-auth'
-import { MONTHLY_AMOUNT_USD, PROVIDER_LABELS } from '@/lib/billing/constants'
+import {
+  MONTHLY_AMOUNT_USD,
+  PROVIDER_LABELS,
+  FIXED_COSTS,
+  TOTAL_FIXED_COSTS_USD,
+  VARIABLE_COST_LABELS,
+} from '@/lib/billing/constants'
 
 interface MonthRow {
   month: string
@@ -9,8 +15,8 @@ interface MonthRow {
 }
 
 /**
- * Informational endpoint: shows API cost breakdown per month.
- * The subscription is a flat $700/month — this is for internal visibility only.
+ * Informational endpoint: shows full cost breakdown per month.
+ * Fixed costs (Semrush, infrastructure, monitoring) + variable API costs + subscription total.
  */
 export async function GET() {
   const { error: authError } = await requireAuth()
@@ -37,11 +43,12 @@ export async function GET() {
       }
       monthsMap.get(row.month)!.push({
         provider: row.provider,
-        label: PROVIDER_LABELS[row.provider] ?? row.provider,
+        label: PROVIDER_LABELS[row.provider] ?? VARIABLE_COST_LABELS[row.provider] ?? row.provider,
         costUsd: Math.round(costUsd * 100) / 100,
       })
     }
 
+    // Ensure current month always shows
     const now = new Date()
     const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
     if (!monthsMap.has(currentMonth)) {
@@ -51,19 +58,27 @@ export async function GET() {
     const months = Array.from(monthsMap.entries())
       .sort((a, b) => b[0].localeCompare(a[0]))
       .slice(0, 12)
-      .map(([month, providers]) => {
-        const apiTotalUsd = providers.reduce((sum, p) => sum + p.costUsd, 0)
+      .map(([month, variableCosts]) => {
+        const variableTotalUsd = variableCosts.reduce((sum, p) => sum + p.costUsd, 0)
         return {
           month,
-          providers,
-          apiTotalUsd: Math.round(apiTotalUsd * 100) / 100,
+          fixedCosts: FIXED_COSTS.map(c => ({
+            id: c.id,
+            label: c.label,
+            description: c.description,
+            costUsd: c.monthlyCostUsd,
+          })),
+          fixedTotalUsd: TOTAL_FIXED_COSTS_USD,
+          variableCosts,
+          variableTotalUsd: Math.round(variableTotalUsd * 100) / 100,
+          totalOperationalUsd: Math.round((TOTAL_FIXED_COSTS_USD + variableTotalUsd) * 100) / 100,
           subscriptionUsd: MONTHLY_AMOUNT_USD,
         }
       })
 
-    return Response.json({ months })
+    return Response.json({ months, fixedCosts: FIXED_COSTS })
   } catch (error) {
     console.error('[Stripe Costs]', error)
-    return Response.json({ months: [] }, { status: 500 })
+    return Response.json({ months: [], fixedCosts: FIXED_COSTS }, { status: 500 })
   }
 }

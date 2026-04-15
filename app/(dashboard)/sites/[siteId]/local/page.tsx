@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { generateLocationSchema, type LocationData } from '@/lib/seo/local-seo'
 
+export const dynamic = 'force-dynamic'
+
 export default async function LocalSEOPage({ params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = await params
   const site = await prisma.site.findUnique({

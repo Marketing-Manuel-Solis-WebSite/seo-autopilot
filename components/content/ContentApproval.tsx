@@ -6,6 +6,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Check, X } from 'lucide-react'
 
+function sanitizeHTML(html: string): string {
+  // Strip script tags, event handlers, and javascript: URLs
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, '')
+    .replace(/javascript\s*:/gi, '')
+    .replace(/<iframe\b[^>]*>/gi, '')
+    .replace(/<object\b[^>]*>/gi, '')
+    .replace(/<embed\b[^>]*>/gi, '')
+}
+
 interface ContentApprovalProps {
   content: {
     title: string
@@ -89,7 +100,7 @@ export default function ContentApproval({ content, siteId }: ContentApprovalProp
           <p className="text-xs text-muted-foreground mb-2">Contenido</p>
           <div
             className="prose prose-sm dark:prose-invert max-w-none"
-            dangerouslySetInnerHTML={{ __html: content.body }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHTML(content.body) }}
           />
         </div>
 

@@ -24,12 +24,26 @@ export async function POST(request: Request) {
   const { user, error } = await requireAuth()
   if (error) return error
 
-  const { fixId } = await request.json()
+  let fixId: string
+  try {
+    const body = await request.json()
+    fixId = body.fixId
+  } catch {
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+  }
 
-  const fix = await prisma.fix.findUniqueOrThrow({
+  if (!fixId) {
+    return NextResponse.json({ error: 'fixId is required' }, { status: 400 })
+  }
+
+  const fix = await prisma.fix.findUnique({
     where: { id: fixId },
     include: { site: true },
   })
+
+  if (!fix) {
+    return NextResponse.json({ error: 'Fix not found' }, { status: 404 })
+  }
 
   const isAutoApplicable = (AUTO_APPLICABLE as readonly string[]).includes(fix.fixType)
 
@@ -91,21 +105,15 @@ export async function POST(request: Request) {
     // ── CONTENT FIXES: update post body/HTML via CMS ──
     } else if ((CONTENT_FIX_TYPES as readonly string[]).includes(fix.fixType)) {
       if (!fix.affectedUrl || !fix.afterValue) {
-        // Has URL but no concrete value → mark as manual action needed
+        // No concrete value to apply → mark as advisory/manual action
         result = { success: true, url: fix.affectedUrl ?? undefined }
       } else {
         const slug = extractSlug(fix.affectedUrl, site.domain)
         if (slug) {
-          // Use updatePost to send the HTML/content change
-          result = await adapter.applyMetaFix(site, slug,
-            fix.fixType === 'fix_meta_title' ? fix.afterValue : '',
-            fix.fixType === 'fix_meta_description' ? fix.afterValue : '',
-          )
-          // If the fix has body content (schema, headings), we'd use updatePost directly
-          // For now, these require manual CMS action if afterValue contains HTML
-          if (!result.success) {
-            result = { success: true, url: fix.affectedUrl }
-          }
+          // Use updatePost for content/HTML changes (schema, headings, alt text, broken links)
+          result = await adapter.updatePost(site, slug, {
+            body: fix.afterValue,
+          })
         } else {
           result = { success: true, url: fix.affectedUrl }
         }

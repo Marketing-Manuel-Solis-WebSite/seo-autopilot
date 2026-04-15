@@ -6,7 +6,19 @@ export async function POST(request: Request) {
   const { error } = await requireAuth()
   if (error) return error
 
-  const { siteId, reportType, period } = await request.json()
+  let siteId: string, reportType: string, period: string
+  try {
+    const body = await request.json()
+    siteId = body.siteId
+    reportType = body.reportType
+    period = body.period
+  } catch {
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+  }
+
+  if (!siteId) {
+    return NextResponse.json({ error: 'siteId is required' }, { status: 400 })
+  }
 
   const [audits, rankings, alerts, content, fixes] = await Promise.all([
     prisma.audit.findMany({

@@ -30,7 +30,8 @@ function gscRowsToKeywordData(rows: GSCRow[]): SemrushKeywordData[] {
 }
 
 export async function runHourlyMonitor(siteId: string): Promise<MonitorResult> {
-  const site = await prisma.site.findUniqueOrThrow({ where: { id: siteId } })
+  const site = await prisma.site.findUnique({ where: { id: siteId } })
+  if (!site) throw new Error(`Site not found: ${siteId}`)
   const startTime = Date.now()
 
   let gscRows: GSCRow[] = []

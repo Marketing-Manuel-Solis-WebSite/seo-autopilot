@@ -50,3 +50,39 @@ export function severityColor(severity: string): string {
     default: return 'bg-muted text-muted-foreground'
   }
 }
+
+/**
+ * Safely parse JSON from Claude API responses.
+ * Strips markdown code fences and handles edge cases.
+ */
+export function safeParseJSON<T>(raw: string, label: string): T {
+  // Remove markdown code fences (```json ... ``` or ``` ... ```)
+  let cleaned = raw.trim()
+  // Handle opening fences: ```json, ```JSON, ```
+  cleaned = cleaned.replace(/^```(?:json|JSON)?\s*\n?/, '')
+  // Handle closing fences
+  cleaned = cleaned.replace(/\n?\s*```\s*$/, '')
+  cleaned = cleaned.trim()
+
+  // If still starts/ends with fences (edge case with nested blocks), strip again
+  if (cleaned.startsWith('```')) {
+    cleaned = cleaned.replace(/^```(?:json|JSON)?\s*\n?/, '').replace(/\n?\s*```\s*$/, '').trim()
+  }
+
+  try {
+    return JSON.parse(cleaned) as T
+  } catch (e) {
+    const preview = cleaned.slice(0, 300)
+    throw new Error(
+      `[${label}] Failed to parse JSON response. Preview: "${preview}..." — Error: ${e instanceof Error ? e.message : String(e)}`,
+    )
+  }
+}
+
+/**
+ * Calculate word count from HTML body, stripping tags first.
+ */
+export function countWordsInHTML(html: string): number {
+  const text = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+  return text ? text.split(' ').length : 0
+}

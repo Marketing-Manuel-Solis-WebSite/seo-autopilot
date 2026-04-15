@@ -6,6 +6,7 @@ import type { SERPAnalysis } from '@/lib/serp/analyzer'
 import type { TopicMap } from '@/lib/seo/topical-authority'
 import { withRetry } from '@/lib/utils/retry'
 import { logClaudeCost } from '@/lib/costs/tracker'
+import { safeParseJSON } from '@/lib/utils/helpers'
 
 export interface OpusAnalysisInput {
   siteData: { domain: string; name: string }
@@ -43,8 +44,7 @@ export async function claudeOpusDeepAnalysis(input: OpusAnalysisInput): Promise<
     throw new Error('Claude Opus did not return text content')
   }
 
-  const clean = textContent.text.replace(/```json\n?|```\n?/g, '').trim()
-  return JSON.parse(clean) as ClaudeAnalysisResult
+  return safeParseJSON<ClaudeAnalysisResult>(textContent.text, 'Claude Opus deep analysis')
 }
 
 export async function claudeOpusGenerateContent(input: {
@@ -78,6 +78,5 @@ export async function claudeOpusGenerateContent(input: {
     throw new Error('Claude Opus did not return text content')
   }
 
-  const clean = textContent.text.replace(/```json\n?|```\n?/g, '').trim()
-  return JSON.parse(clean) as ContentGenerationResult
+  return safeParseJSON<ContentGenerationResult>(textContent.text, 'Claude Opus content generation')
 }
