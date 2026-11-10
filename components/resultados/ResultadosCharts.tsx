@@ -154,7 +154,7 @@ export function DailyClicks({ daily }: { daily: ResultadosDaily[] }) {
             tick={AXIS_TICK}
             tickLine={false}
             axisLine={{ stroke: 'var(--viz-axis)' }}
-            interval={6}
+            interval={data.length <= 14 ? 0 : 6}
             minTickGap={16}
           />
           <YAxis tick={AXIS_TICK} tickLine={false} axisLine={false} width={40} />

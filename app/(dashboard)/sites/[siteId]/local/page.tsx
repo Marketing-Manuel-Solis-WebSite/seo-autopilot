@@ -27,7 +27,7 @@ export default async function LocalSEOPage({ params }: { params: Promise<{ siteI
     <div className="space-y-6 p-6">
       <PageHeader
         title={`Local SEO — ${site.name}`}
-        description="Ubicaciones, rankings locales y schema LocalBusiness"
+        description="Oficinas publicadas en el sitio, su NAP y su ficha de Google Business"
       />
 
       {locations.length === 0 ? (
@@ -60,10 +60,10 @@ export default async function LocalSEOPage({ params }: { params: Promise<{ siteI
 
                   <div className="flex gap-2">
                     <Badge className={hasSchema ? 'bg-green-500/10 text-green-500' : 'bg-yellow-500/10 text-yellow-500'}>
-                      Schema: {hasSchema ? 'Generated' : 'Missing'}
+                      {hasSchema ? 'Schema LegalService publicado' : 'Sin schema'}
                     </Badge>
                     <Badge className={location.gbpPlaceId ? 'bg-green-500/10 text-green-500' : 'bg-gray-500/10 text-gray-500'}>
-                      GBP: {location.gbpPlaceId ? 'Connected' : 'Not connected'}
+                      {location.gbpPlaceId ? 'Ficha de Google vinculada' : 'Sin ficha de Google vinculada'}
                     </Badge>
                   </div>
 

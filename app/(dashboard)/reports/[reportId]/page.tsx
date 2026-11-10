@@ -5,7 +5,9 @@ import { prisma } from '@/lib/prisma'
 import PageHeader from '@/components/layout/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import type { MonthlyReportData, ResultadosContacts, ResultadosData } from '@/lib/resultados/types'
+import type { MonthlyReportData, ResultadosContacts, ResultadosData, SearchAnalysisData, WeeklyReportData } from '@/lib/resultados/types'
+import WeeklyReportView from '@/components/resultados/WeeklyReportView'
+import SearchAnalysisView from '@/components/resultados/SearchAnalysisView'
 import { monthLong } from '@/lib/resultados/types'
 import { fmt, pctChange, ShareMeter, StatTile } from '@/components/resultados/Stats'
 import { formatDate } from '@/lib/utils/helpers'
@@ -117,7 +119,7 @@ function MonthlyReportView({
 
       <PageHeader
         title={`Reporte mensual SEO · ${monthLong(data.month)} ${data.month.slice(0, 4)}`}
-        description={`${data.site} · comparado con ${prevName} · datos cargados el ${data.updatedAt}`}
+        description={`${data.site} · comparado con ${prevName} · actualizado el ${data.updatedAt}`}
       >
         {partial && <Badge variant="outline">En curso · {partial}</Badge>}
       </PageHeader>
@@ -329,6 +331,23 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ r
         nextId={i >= 0 && i < siblings.length - 1 ? siblings[i + 1].id : undefined}
       />
     )
+  }
+
+  if (report.reportType === 'semanal_seo') {
+    const weeks = await prisma.report.findMany({ where: { reportType: 'semanal_seo' }, orderBy: { period: 'asc' }, select: { id: true } })
+    const i = weeks.findIndex(w => w.id === report.id)
+    return (
+      <WeeklyReportView
+        data={report.data as unknown as WeeklyReportData}
+        site={report.site?.domain ?? 'www.manuelsolis.com'}
+        prevId={i > 0 ? weeks[i - 1].id : undefined}
+        nextId={i >= 0 && i < weeks.length - 1 ? weeks[i + 1].id : undefined}
+      />
+    )
+  }
+
+  if (report.reportType === 'analisis_busqueda') {
+    return <SearchAnalysisView data={report.data as unknown as SearchAnalysisData} site={report.site?.domain ?? 'www.manuelsolis.com'} />
   }
 
   // Other report types: basic view of the stored summary

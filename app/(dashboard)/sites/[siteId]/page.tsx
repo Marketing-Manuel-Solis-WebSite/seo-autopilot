@@ -76,7 +76,7 @@ export default async function SiteDetailPage({
   const site = await prisma.site.findUnique({
     where: { id: siteId },
     include: {
-      audits: { orderBy: { createdAt: 'desc' }, take: 1 },
+      audits: { where: { score: { not: null } }, orderBy: { createdAt: 'desc' }, take: 1 },
       alerts: { where: { isRead: false }, take: 5 },
       fixes: { where: { status: 'pending_approval' }, take: 5 },
       _count: { select: { keywords: true, content: true, backlinks: true, rankings: true } },
@@ -174,8 +174,8 @@ export default async function SiteDetailPage({
             />
             <ConnectionRow
               ok={resultsCount > 0}
-              title="Search Console y GA4 · datos cargados"
-              detail={resultsCount > 0 ? `${resultsCount} reportes (marzo a noviembre 2026)` : 'Sin datos cargados'}
+              title="Search Console y GA4"
+              detail={resultsCount > 0 ? `Datos de marzo a noviembre 2026 · ${resultsCount} reportes` : 'Sin datos todavía'}
               href={resultsCount > 0 ? '/resultados' : undefined}
               hrefLabel="Ver resultados"
             />
@@ -239,7 +239,7 @@ export default async function SiteDetailPage({
         </Card>
       </div>
 
-      {!latestAudit && lastFull && firstMonth && (
+      {lastFull && firstMonth && (
         <div className="space-y-3">
           <div className="flex items-baseline justify-between">
             <h2 className="text-sm font-medium">Resultados en Google · {monthLong(lastFull.month)} {lastFull.month.slice(0, 4)}</h2>
@@ -276,7 +276,7 @@ export default async function SiteDetailPage({
         </div>
       )}
 
-      {/* Stats grid (from the Autopilot's own audits) */}
+      {/* Stats grid */}
       {latestAudit && (
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Card className="sm:col-span-2 lg:col-span-1">
@@ -299,7 +299,8 @@ export default async function SiteDetailPage({
               <Link2 className="h-4 w-4" />
               <span className="text-xs">Backlinks</span>
             </div>
-            <p className="mt-1 text-3xl font-bold font-mono">{site._count.backlinks.toLocaleString()}</p>
+            <p className="mt-1 text-3xl font-bold font-mono">{site._count.backlinks > 0 ? site._count.backlinks.toLocaleString() : '—'}</p>
+            {site._count.backlinks === 0 && <p className="text-[11px] text-muted-foreground">Search Console no entrega enlaces por API</p>}
           </CardContent>
         </Card>
         <Card>

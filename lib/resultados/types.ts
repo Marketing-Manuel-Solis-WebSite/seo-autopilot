@@ -119,3 +119,51 @@ export function monthShort(ym: string): string {
 export function monthLong(ym: string): string {
   return MONTH_LONG[ym.slice(5, 7)] ?? ym
 }
+
+/** Shape of Report.data for reportType = 'semanal_seo' (one per Monday–Sunday week). */
+export interface WeeklyReportData {
+  start: string
+  end: string
+  label: string
+  headline: string
+  clicks: number
+  impressions: number
+  ctr: number
+  position: number | null
+  bestDay: { date: string; clicks: number }
+  days: { date: string; clicks: number; impressions: number }[]
+  commits: number
+  agentCommits: number
+  changes: { date: string; subject: string; agent: boolean }[]
+  posts: { title: string; url: string; date: string }[]
+  contacts: { phone: number; whatsapp: number; consulta: number; form: number } | null
+  previous: { clicks: number; impressions: number; position: number | null; label: string } | null
+}
+
+export interface MetricRow {
+  key: string
+  clicks?: number
+  impressions?: number
+  ctr?: number
+  position?: number
+  sessions?: number
+  users?: number
+  engagement?: number
+}
+
+/** Shape of Report.data for reportType = 'analisis_busqueda'. */
+export interface SearchAnalysisData {
+  period: string
+  totals: { clicks12m: number; impressions12m: number; clicks3m: number; impressions3m: number; clicksPrev3m: number; impressionsPrev3m: number }
+  queries12m: MetricRow[]
+  queries3m: MetricRow[]
+  opportunities: MetricRow[]
+  pages3m: MetricRow[]
+  countries3m: MetricRow[]
+  devices3m: MetricRow[]
+  channels: MetricRow[]
+  sources: MetricRow[]
+  gaDevices: MetricRow[]
+  gaCountries: MetricRow[]
+  locations: { name: string; city: string; state: string; hours: string; kind: string; hasGbp: boolean }[]
+}

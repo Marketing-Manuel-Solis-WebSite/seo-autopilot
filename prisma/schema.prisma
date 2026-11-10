@@ -65,6 +65,13 @@ model Keyword {
   cpc          Float?
   intent       String?
   targetUrl    String?
+  /// Search Console, last 12 months
+  gscClicks        Int?
+  gscImpressions   Int?
+  gscCtr           Float?
+  /// Search Console, last 3 months
+  gscClicks3m      Int?
+  gscImpressions3m Int?
   isTracking   Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt

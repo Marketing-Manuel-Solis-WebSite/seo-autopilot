@@ -40,6 +40,7 @@ export default function QuickStats({
     },
     {
       label: 'Backlinks activos',
+      // Search Console does not expose links through its API
       value: totalBacklinks,
       icon: Link2,
       color: 'text-emerald-500',
@@ -66,7 +67,7 @@ export default function QuickStats({
               <div className="min-w-0 flex-1">
                 <p className="text-xs text-muted-foreground">{stat.label}</p>
                 <p className={`text-xl font-bold font-mono ${stat.urgent ? stat.color : ''}`}>
-                  {stat.value.toLocaleString()}
+                  {stat.label === 'Backlinks activos' && stat.value === 0 ? '—' : stat.value.toLocaleString('es-MX')}
                 </p>
               </div>
             </div>

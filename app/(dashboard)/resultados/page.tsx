@@ -12,7 +12,7 @@ import {
   OrganicSessions,
   WorkShipped,
 } from '@/components/resultados/ResultadosCharts'
-import { fmt, pctChange, StatTile } from '@/components/resultados/Stats'
+import { fmt, pctChange, signedPct, StatTile } from '@/components/resultados/Stats'
 
 export const dynamic = 'force-dynamic'
 
@@ -41,6 +41,16 @@ function ChartCard({
   )
 }
 
+function QuickLink({ href, title, detail }: { href: string; title: string; detail: string }) {
+  return (
+    <Link href={href} className="group block rounded-xl border bg-card p-4 transition-colors hover:bg-accent/50">
+      <p className="text-sm font-medium">{title}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
+      <p className="mt-2 text-xs font-medium text-primary group-hover:underline">Abrir →</p>
+    </Link>
+  )
+}
+
 function dayLabel(date?: string) {
   if (!date) return ''
   return `${Number(date.slice(8, 10))} ${monthShort(date)}`
@@ -51,15 +61,22 @@ function cell(n: number | undefined | null, suffix = '') {
 }
 
 export default async function ResultadosPage() {
-  const [report, monthly] = await Promise.all([
+  const [report, monthly, analysis, weeklyCount, latestWeek, auditCount, keywordCount, contentCount, locationCount] = await Promise.all([
     prisma.report.findFirst({ where: { reportType: 'resultados_seo' }, orderBy: { generatedAt: 'desc' } }),
     prisma.report.findMany({ where: { reportType: 'mensual_seo' }, orderBy: { period: 'asc' } }),
+    prisma.report.findFirst({ where: { reportType: 'analisis_busqueda' }, orderBy: { generatedAt: 'desc' }, select: { id: true } }),
+    prisma.report.count({ where: { reportType: 'semanal_seo' } }),
+    prisma.report.findFirst({ where: { reportType: 'semanal_seo' }, orderBy: { period: 'desc' }, select: { id: true, title: true } }),
+    prisma.audit.count(),
+    prisma.keyword.count(),
+    prisma.content.count(),
+    prisma.location.count(),
   ])
 
   if (!report) {
     return (
       <div className="space-y-6 p-6">
-        <PageHeader title="Resultados SEO" description="Aún no hay datos cargados." />
+        <PageHeader title="Resultados SEO" description="Todavía no hay resultados para este sitio." />
       </div>
     )
   }
@@ -89,7 +106,7 @@ export default async function ResultadosPage() {
     <div className="space-y-6 p-6">
       <PageHeader
         title="Resultados SEO"
-        description={`${data.site} · ${periodLabel} · Search Console y GA4 · datos cargados el ${data.updatedAt}`}
+        description={`${data.site} · ${periodLabel} · Search Console y GA4 · actualizado el ${data.updatedAt}`}
       />
 
       {/* Hero: the one number this view leads with */}
@@ -166,6 +183,21 @@ export default async function ResultadosPage() {
         />
       </div>
 
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {analysis && (
+          <QuickLink href={`/reports/${analysis.id}`} title="Análisis de búsqueda y audiencia" detail="Búsquedas, páginas, oportunidades, países, dispositivos y canales" />
+        )}
+        {latestWeek && (
+          <QuickLink href="/reports" title={`${weeklyCount} reportes semanales`} detail={`De marzo a noviembre · el más reciente: ${latestWeek.title.replace('Reporte semanal SEO — ', '')}`} />
+        )}
+        <QuickLink href="/sites/site_manuelsolis/audit" title={`${auditCount} auditorías SEO`} detail="Técnicas, de cobertura, analítica y completas, con acciones" />
+        <QuickLink
+          href="/sites/site_manuelsolis"
+          title="Datos del sitio"
+          detail={`${fmt(keywordCount)} búsquedas de Google · ${fmt(contentCount)} artículos · ${fmt(locationCount)} oficinas`}
+        />
+      </div>
+
       {monthly.length > 0 && (
         <Card>
           <CardHeader>
@@ -205,7 +237,7 @@ export default async function ResultadosPage() {
                       {partial
                         ? `En curso: ${fmt(m.metrics.gscClicks ?? 0)} clics (${m.metrics.partial?.gsc})`
                         : `${fmt(m.metrics.gscImpressions ?? 0)} impresiones${
-                            d !== null ? ` · ${d >= 0 ? '+' : '−'}${fmt(Math.round(Math.abs(d)))} % vs ${monthShort(m.previous.month)}` : ''
+                            d !== null ? ` · ${signedPct(d)} vs ${monthShort(m.previous.month)}` : ''
                           }`}
                     </p>
                     <p className="mt-2 text-xs font-medium text-primary group-hover:underline">Ver reporte →</p>

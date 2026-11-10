@@ -19,14 +19,14 @@ export default async function KeywordsPage({
   const keywords = await prisma.keyword.findMany({
     where: { siteId, isTracking: true },
     include: { rankings: { orderBy: { checkedAt: 'desc' }, take: 1 } },
-    orderBy: { searchVolume: 'desc' },
+    orderBy: [{ gscClicks: { sort: 'desc', nulls: 'last' } }, { gscImpressions: { sort: 'desc', nulls: 'last' } }],
   })
 
   return (
     <div className="space-y-6 p-6">
-      <PageHeader title={`Keywords — ${site.name}`} description={`${keywords.length} keywords rastreadas`} />
+      <PageHeader title={`Keywords — ${site.name}`} description={`${keywords.length} búsquedas de Google con clics o impresiones · Search Console, 12 meses al 25 oct 2026 y últimos 3 meses`} />
       <Card>
-        <CardHeader><CardTitle className="text-base">Keywords y rankings</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">Búsquedas y posiciones</CardTitle><p className="text-xs text-muted-foreground">Posición media de los últimos 3 meses; el cambio compara contra el promedio de 12 meses.</p></CardHeader>
         <CardContent>
           <KeywordTable keywords={keywords} />
         </CardContent>

@@ -12,7 +12,7 @@ export default async function ContentStudioPage() {
   const [all, pending, published] = await Promise.all([
     prisma.content.findMany({
       orderBy: { createdAt: 'desc' },
-      take: 50,
+      take: 100,
       include: { site: { select: { name: true, domain: true } } },
     }),
     prisma.content.findMany({
@@ -23,14 +23,14 @@ export default async function ContentStudioPage() {
     prisma.content.findMany({
       where: { status: 'published' },
       orderBy: { publishedAt: 'desc' },
-      take: 20,
+      take: 100,
       include: { site: { select: { name: true, domain: true } } },
     }),
   ])
 
   return (
     <div className="space-y-6 p-6">
-      <PageHeader title="Content Studio" description="Gestión global de contenido SEO">
+      <PageHeader title="Content Studio" description="Artículos y páginas del sitio con su rendimiento en Google">
         <Link href="/content/generate">
           <Button className="gap-2"><Plus className="h-4 w-4" /> Generar contenido</Button>
         </Link>

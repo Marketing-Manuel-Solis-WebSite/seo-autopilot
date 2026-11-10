@@ -68,7 +68,7 @@ export default function SiteCard({
           {(repo !== undefined || gscConnected !== undefined || hasResults !== undefined) && (
             <div className="space-y-1.5">
               <Status ok={Boolean(repo)} label={repo ? `Repositorio del sitio · ${repo.split('/')[1]}` : 'Repositorio sin conectar'} />
-              <Status ok={Boolean(hasResults)} label={hasResults ? 'Search Console y GA4 · datos cargados' : 'Sin datos de resultados'} />
+              <Status ok={Boolean(hasResults)} label={hasResults ? 'Search Console y GA4 · marzo a noviembre' : 'Sin datos de resultados'} />
               <Status ok={Boolean(gscConnected)} label={gscConnected ? 'Search Console en vivo' : 'Search Console en vivo: falta autorizar'} />
               {!isActive && (
                 <span className="flex items-center gap-1.5 text-xs text-muted-foreground">

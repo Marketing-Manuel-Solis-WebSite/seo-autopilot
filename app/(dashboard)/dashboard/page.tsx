@@ -14,11 +14,10 @@ export const dynamic = 'force-dynamic'
 async function getDashboardData() {
   const [sites, recentAlerts, recentActivity, pendingFixes, pendingContent, totalKeywords, totalBacklinks] = await Promise.all([
     prisma.site.findMany({
-      where: { isActive: true },
       include: {
-        audits: { orderBy: { createdAt: 'desc' }, take: 1 },
+        audits: { where: { score: { not: null } }, orderBy: { createdAt: 'desc' }, take: 1 },
         alerts: { where: { isRead: false }, orderBy: { createdAt: 'desc' }, take: 5 },
-        rankings: { orderBy: { checkedAt: 'desc' }, take: 10 },
+        rankings: { orderBy: { checkedAt: 'desc' }, take: 1000 },
       },
     }),
     prisma.alert.findMany({
@@ -51,7 +50,7 @@ export default async function DashboardPage() {
     <div className="space-y-6 p-6">
       <PageHeader
         title="Dashboard"
-        description={`${sites.length} sitios monitoreados activamente`}
+        description={`${sites.length} sitio${sites.length === 1 ? '' : 's'} · ${sites.filter(s => s.isActive).length} con monitoreo automático`}
       />
 
       <GlobalMetricsBar sites={sites} />

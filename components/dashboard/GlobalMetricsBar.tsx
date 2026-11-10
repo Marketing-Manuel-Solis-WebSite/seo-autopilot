@@ -21,10 +21,10 @@ export default function GlobalMetricsBar({ sites }: GlobalMetricsBarProps) {
   )
 
   const metrics = [
-    { label: 'Sitios activos', value: totalSites, icon: Globe, color: 'text-blue-500' },
-    { label: 'Score promedio', value: avgScore, icon: TrendingUp, color: 'text-green-500' },
+    { label: totalSites === 1 ? 'Sitio' : 'Sitios', value: totalSites, icon: Globe, color: 'text-blue-500' },
+    { label: 'Score de la última auditoría', value: avgScore, icon: TrendingUp, color: 'text-green-500' },
     { label: 'Alertas activas', value: totalAlerts, icon: AlertTriangle, color: totalAlerts > 0 ? 'text-red-500' : 'text-green-500' },
-    { label: 'Rankings mejorando', value: improving, icon: FileText, color: 'text-emerald-500' },
+    { label: 'Búsquedas que subieron de posición', value: improving, icon: FileText, color: 'text-emerald-500' },
   ]
 
   return (

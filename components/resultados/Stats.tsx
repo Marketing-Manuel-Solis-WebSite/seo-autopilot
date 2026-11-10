@@ -4,6 +4,12 @@ import { Card, CardContent } from '@/components/ui/card'
 const nf = new Intl.NumberFormat('es-MX')
 export const fmt = (n: number) => nf.format(n)
 
+/** "+12 %", "−3 %" or "0 %" (never "−0 %") */
+export function signedPct(v: number): string {
+  const r = Math.round(Math.abs(v))
+  return r === 0 ? '0 %' : `${v > 0 ? '+' : '−'}${fmt(r)} %`
+}
+
 export function pctChange(current: number | null | undefined, base: number | null | undefined): number | null {
   if (typeof current !== 'number' || typeof base !== 'number' || !base) return null
   return ((current - base) / base) * 100
@@ -31,7 +37,7 @@ export function Delta({
   const good = lowerIsBetter ? !up : up
   const Icon = flat ? null : up ? ArrowUpRight : ArrowDownRight
   const shown = absolute !== undefined ? Math.abs(absolute) : Math.round(Math.abs(value))
-  const sign = up ? '+' : value < 0 ? '−' : ''
+  const sign = shown === 0 ? '' : up ? '+' : value < 0 ? '−' : ''
   return (
     <p className="mt-1 flex flex-wrap items-center gap-1 text-xs">
       <span
