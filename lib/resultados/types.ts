@@ -12,6 +12,8 @@ export interface ResultadosMonth {
   ga4OrganicWww?: number
   engagementWww?: number | null
   commits: number
+  /** Commits signed by the AI agent (Co-Authored-By: Claude) */
+  agentCommits?: number
   newPages: number
   newLandings: number
   postsPublished: number
@@ -53,6 +55,21 @@ export interface ResultadosData {
   daily: ResultadosDaily[]
   milestones: ResultadosMilestone[]
   sources: string[]
+}
+
+/** Shape of Report.data for reportType = 'mensual_seo' (one per month). */
+export interface MonthlyReportData {
+  month: string
+  /** One-line justification of the month */
+  headline: string
+  metrics: Partial<ResultadosMonth>
+  previous: Partial<ResultadosMonth> & { month: string }
+  contacts?: ResultadosContacts | null
+  work: { category: string; items: string[] }[]
+  agent: { commits: number; agentCommits: number; highlights: string[] }
+  note?: string | null
+  site: string
+  updatedAt: string
 }
 
 export const MONTH_SHORT: Record<string, string> = {

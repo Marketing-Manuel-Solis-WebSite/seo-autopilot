@@ -264,6 +264,7 @@ export function WorkShipped({ months }: { months: ResultadosMonth[] }) {
     posts: m.postsPublished,
     pages: m.newPages,
     commits: m.commits,
+    agent: m.agentCommits ?? 0,
     scheduled: m.postsScheduled ?? 0,
   }))
   return (
@@ -282,6 +283,7 @@ export function WorkShipped({ months }: { months: ResultadosMonth[] }) {
                 { label: 'Páginas nuevas', value: fmt(p.pages), color: 'var(--series-1)' },
                 { label: 'Posts publicados', value: fmt(p.posts) },
                 { label: 'Cambios al sitio (commits)', value: fmt(p.commits) },
+                { label: 'Hechos por el agente de IA', value: fmt(p.agent) },
               ]
               if (p.scheduled) rows.splice(2, 0, { label: 'Posts programados', value: fmt(p.scheduled) })
               return <TooltipCard title={monthLong(p.month)} rows={rows} />
