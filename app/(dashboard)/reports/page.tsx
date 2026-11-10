@@ -18,8 +18,9 @@ export default async function ReportsPage() {
     <div className="space-y-6 p-6">
       <PageHeader title="Reportes" description="Reportes automáticos generados por el sistema" />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {reports.map(report => (
-          <Card key={report.id} className="transition-colors hover:bg-accent/50">
+        {reports.map(report => {
+          const card = (
+          <Card className="h-full transition-colors hover:bg-accent/50">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <Badge variant="outline" className="text-xs">{report.reportType}</Badge>
@@ -32,9 +33,18 @@ export default async function ReportsPage() {
                 <p className="text-xs text-muted-foreground">{report.site.domain}</p>
               )}
               <p className="mt-1 text-xs text-muted-foreground">Periodo: {report.period}</p>
+              {report.reportType === 'resultados_seo' && (
+                <p className="mt-2 text-xs font-medium text-primary">Ver tablero →</p>
+              )}
             </CardContent>
           </Card>
-        ))}
+          )
+          return report.reportType === 'resultados_seo' ? (
+            <Link key={report.id} href="/resultados" className="block">{card}</Link>
+          ) : (
+            <div key={report.id}>{card}</div>
+          )
+        })}
         {reports.length === 0 && (
           <p className="col-span-full py-8 text-center text-sm text-muted-foreground">Sin reportes generados aún</p>
         )}

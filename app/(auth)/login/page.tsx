@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -11,7 +11,13 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [loginError, setError] = useState('')
+  const forbidden = useSyncExternalStore(
+    () => () => {},
+    () => new URLSearchParams(window.location.search).get('error') === 'no_autorizado',
+    () => false,
+  )
+  const error = loginError || (forbidden ? 'Esta cuenta no tiene acceso al panel.' : '')
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -35,7 +41,9 @@ export default function LoginPage() {
     }
 
     const params = new URLSearchParams(window.location.search)
-    const redirectTo = params.get('redirectTo') || '/dashboard'
+    const target = params.get('redirectTo') || '/resultados'
+    // Same-origin paths only (no open redirect via ?redirectTo=//evil.com)
+    const redirectTo = target.startsWith('/') && !target.startsWith('//') ? target : '/resultados'
     window.location.href = redirectTo
   }
 

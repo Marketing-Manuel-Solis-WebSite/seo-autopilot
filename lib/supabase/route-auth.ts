@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
+import { isAllowedEmail } from '@/lib/auth/allowlist'
 
 /**
  * Verifies Supabase auth session in API route handlers.
@@ -37,6 +38,16 @@ export async function requireAuth(): Promise<
       error: NextResponse.json(
         { error: 'Unauthorized', message: 'Valid Supabase session required' },
         { status: 401 },
+      ),
+    }
+  }
+
+  if (!isAllowedEmail(user.email)) {
+    return {
+      user: null,
+      error: NextResponse.json(
+        { error: 'Forbidden', message: 'This account has no access' },
+        { status: 403 },
       ),
     }
   }

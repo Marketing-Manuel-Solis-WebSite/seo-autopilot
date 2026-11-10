@@ -8,6 +8,11 @@ import {
   VARIABLE_COST_LABELS,
 } from '@/lib/billing/constants'
 
+/** The billing page reads `costUsd`; FIXED_COSTS stores `monthlyCostUsd`. */
+function fixedCostItems() {
+  return FIXED_COSTS.map(c => ({ id: c.id, label: c.label, description: c.description, costUsd: c.monthlyCostUsd }))
+}
+
 interface MonthRow {
   month: string
   provider: string
@@ -62,12 +67,7 @@ export async function GET() {
         const variableTotalUsd = variableCosts.reduce((sum, p) => sum + p.costUsd, 0)
         return {
           month,
-          fixedCosts: FIXED_COSTS.map(c => ({
-            id: c.id,
-            label: c.label,
-            description: c.description,
-            costUsd: c.monthlyCostUsd,
-          })),
+          fixedCosts: fixedCostItems(),
           fixedTotalUsd: TOTAL_FIXED_COSTS_USD,
           variableCosts,
           variableTotalUsd: Math.round(variableTotalUsd * 100) / 100,
@@ -76,9 +76,9 @@ export async function GET() {
         }
       })
 
-    return Response.json({ months, fixedCosts: FIXED_COSTS })
+    return Response.json({ months, fixedCosts: fixedCostItems() })
   } catch (error) {
     console.error('[Stripe Costs]', error)
-    return Response.json({ months: [], fixedCosts: FIXED_COSTS }, { status: 500 })
+    return Response.json({ months: [], fixedCosts: fixedCostItems() }, { status: 500 })
   }
 }

@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { isAllowedEmail } from '@/lib/auth/allowlist'
 import Sidebar from '@/components/layout/Sidebar'
 import TopNav from '@/components/layout/TopNav'
 
@@ -32,6 +33,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     redirect('/login')
+  }
+  if (!isAllowedEmail(user.email)) {
+    redirect('/login?error=no_autorizado')
   }
 
   const { alertCount, fixCount, systemStatus } = await getLayoutData()

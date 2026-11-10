@@ -13,6 +13,7 @@ import {
   Zap,
   CreditCard,
   Wrench,
+  TrendingUp,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -23,6 +24,7 @@ interface SidebarProps {
 }
 
 const navItems = [
+  { href: '/resultados', label: 'Resultados', icon: TrendingUp },
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/sites', label: 'Sitios', icon: Globe },
   { href: '/content', label: 'Content Studio', icon: FileText },

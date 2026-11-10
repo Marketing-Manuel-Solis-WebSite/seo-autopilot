@@ -21,6 +21,18 @@ export async function POST() {
       }
       customerId = subscription.stripeCustomerId
     } else {
+      // No local record (e.g. the database was rebuilt). Never open a second
+      // $700 subscription while one for this price is still live in Stripe.
+      for (const status of ['active', 'past_due', 'trialing'] as const) {
+        const existing = await stripe().subscriptions.list({ price: getUnitPriceId(), status, limit: 1 })
+        if (existing.data.length > 0) {
+          return Response.json(
+            { error: 'Ya hay una suscripcion activa en Stripe. Hay que vincularla en lugar de crear otra.' },
+            { status: 409 },
+          )
+        }
+      }
+
       const customer = await stripe().customers.create({
         metadata: { app: 'solis-seo-autopilot' },
       })
