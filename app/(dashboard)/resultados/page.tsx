@@ -194,6 +194,12 @@ export default async function ResultadosPage() {
                         agente {fmt(m.agent.agentCommits)}/{fmt(m.agent.commits)}
                       </span>
                     </div>
+                    {m.highlights?.[0] && (
+                      <p className="mt-2 flex items-baseline gap-2">
+                        <span className="text-2xl font-semibold tracking-tight">{m.highlights[0].value}</span>
+                        <span className="text-xs text-muted-foreground">{m.highlights[0].label}</span>
+                      </p>
+                    )}
                     <p className="mt-2 text-sm leading-snug">{m.headline}</p>
                     <p className="mt-2 text-xs text-muted-foreground">
                       {partial

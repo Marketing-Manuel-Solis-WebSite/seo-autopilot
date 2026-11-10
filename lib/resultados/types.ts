@@ -70,6 +70,36 @@ export interface MonthlyReportData {
   note?: string | null
   site: string
   updatedAt: string
+  /** The standout numbers of the month */
+  highlights?: { value: string; label: string; detail: string }[]
+  /** What was uploaded to the site that month, with its Google performance (12 months to 25 oct) */
+  uploads?: MonthlyUploads
+}
+
+export interface UploadedPost {
+  title: string
+  url: string
+  date: string
+  clicks: number
+  impressions: number
+  scheduled: boolean
+}
+
+export interface UploadedPage {
+  path: string
+  url: string
+  kind: string
+  clicks: number
+  impressions: number
+}
+
+export interface MonthlyUploads {
+  posts: UploadedPost[]
+  pages: UploadedPage[]
+  postsClicks: number
+  postsImpressions: number
+  pagesClicks: number
+  pagesImpressions: number
 }
 
 export const MONTH_SHORT: Record<string, string> = {

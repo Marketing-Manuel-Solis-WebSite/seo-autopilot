@@ -12,6 +12,53 @@ import { formatDate } from '@/lib/utils/helpers'
 
 export const dynamic = 'force-dynamic'
 
+function dateShort(date: string) {
+  return new Date(`${date}T12:00:00Z`).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })
+}
+
+function UploadTable({
+  title,
+  totals,
+  rows,
+}: {
+  title: string
+  totals: string
+  rows: { key: string; name: string; url: string; meta: string; clicks: number; impressions: number }[]
+}) {
+  return (
+    <div>
+      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</p>
+        <p className="text-xs text-muted-foreground">{totals}</p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[640px] text-sm">
+          <thead>
+            <tr className="border-b text-left text-xs text-muted-foreground">
+              <th className="py-2 pr-3 font-medium">Página</th>
+              <th className="py-2 pr-3 font-medium">Detalle</th>
+              <th className="py-2 pr-3 text-right font-medium">Clics</th>
+              <th className="py-2 text-right font-medium">Impresiones</th>
+            </tr>
+          </thead>
+          <tbody className="tabular-nums">
+            {rows.map(r => (
+              <tr key={r.key} className="border-b last:border-0">
+                <td className="py-2 pr-3">
+                  <a href={r.url} target="_blank" rel="noreferrer" className="hover:underline">{r.name}</a>
+                </td>
+                <td className="whitespace-nowrap py-2 pr-3 text-xs text-muted-foreground">{r.meta}</td>
+                <td className="py-2 pr-3 text-right">{r.clicks ? fmt(r.clicks) : '—'}</td>
+                <td className="py-2 text-right">{r.impressions ? fmt(r.impressions) : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 function MonthlyReportView({
   data,
   prevId,
@@ -82,6 +129,21 @@ function MonthlyReportView({
           {data.note && <p className="mt-2 text-sm text-muted-foreground">{data.note}</p>}
         </CardContent>
       </Card>
+
+      {data.highlights && data.highlights.length > 0 && (
+        <div className="grid gap-4 md:grid-cols-3">
+          {data.highlights.map(h => (
+            <Card key={h.label} className="bg-gradient-to-b from-primary/10 to-transparent">
+              <CardContent className="py-2">
+                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Lo más destacado</p>
+                <p className="mt-2 text-4xl font-semibold tracking-tight">{h.value}</p>
+                <p className="mt-1 text-sm font-medium">{h.label}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{h.detail}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatTile
@@ -188,6 +250,47 @@ function MonthlyReportView({
           </CardContent>
         </Card>
       </div>
+
+      {data.uploads && (data.uploads.posts.length > 0 || data.uploads.pages.length > 0) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium">Lo que se subió al sitio este mes</CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Clics e impresiones que cada página lleva acumulados en Google, en español e inglés (Search Console, 12 meses al 25 oct 2026).
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {data.uploads.posts.length > 0 && (
+              <UploadTable
+                title={`Artículos del blog · ${data.uploads.posts.length}`}
+                totals={`${fmt(data.uploads.postsClicks)} clics · ${fmt(data.uploads.postsImpressions)} impresiones`}
+                rows={data.uploads.posts.map(p => ({
+                  key: p.url,
+                  name: p.title,
+                  url: p.url,
+                  meta: p.scheduled ? `programado ${dateShort(p.date)}` : dateShort(p.date),
+                  clicks: p.clicks,
+                  impressions: p.impressions,
+                }))}
+              />
+            )}
+            {data.uploads.pages.length > 0 && (
+              <UploadTable
+                title={`Páginas nuevas · ${data.uploads.pages.length}`}
+                totals={`${fmt(data.uploads.pagesClicks)} clics · ${fmt(data.uploads.pagesImpressions)} impresiones`}
+                rows={data.uploads.pages.map(p => ({
+                  key: p.url,
+                  name: `/${p.path}`,
+                  url: p.url,
+                  meta: p.kind,
+                  clicks: p.clicks,
+                  impressions: p.impressions,
+                }))}
+              />
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <p className="pb-4 text-xs text-muted-foreground">
         Fuentes: Search Console (sc-domain:manuelsolis.com), GA4 (propiedad 395596942) y el repositorio del sitio
