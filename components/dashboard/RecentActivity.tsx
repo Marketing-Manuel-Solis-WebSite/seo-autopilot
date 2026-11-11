@@ -21,6 +21,7 @@ const runTypeLabels: Record<string, string> = {
   deep_audit: 'Auditoría profunda',
   rank_check: 'Check rankings',
   content_gen: 'Generación contenido',
+  site_watch: 'Monitoreo en vivo',
 }
 
 export default function RecentActivity({ logs }: RecentActivityProps) {
@@ -38,7 +39,7 @@ export default function RecentActivity({ logs }: RecentActivityProps) {
                   variant={log.status === 'success' ? 'default' : 'destructive'}
                   className="text-xs"
                 >
-                  {log.status}
+                  {log.status === 'success' ? 'OK' : log.status}
                 </Badge>
                 <div>
                   <span className="font-medium">{runTypeLabels[log.runType] ?? log.runType}</span>

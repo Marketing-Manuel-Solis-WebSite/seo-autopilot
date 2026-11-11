@@ -69,7 +69,7 @@ export default async function ResultadosPage() {
     prisma.report.findFirst({ where: { reportType: 'semanal_seo' }, orderBy: { period: 'desc' }, select: { id: true, title: true } }),
     prisma.audit.count(),
     prisma.keyword.count(),
-    prisma.content.count(),
+    prisma.content.count({ where: { status: 'published' } }),
     prisma.location.count(),
   ])
 
@@ -194,7 +194,7 @@ export default async function ResultadosPage() {
         <QuickLink
           href="/sites/site_manuelsolis"
           title="Datos del sitio"
-          detail={`${fmt(keywordCount)} búsquedas de Google · ${fmt(contentCount)} artículos · ${fmt(locationCount)} oficinas`}
+          detail={`${fmt(keywordCount)} búsquedas de Google · ${fmt(contentCount)} páginas publicadas · ${fmt(locationCount)} oficinas`}
         />
       </div>
 

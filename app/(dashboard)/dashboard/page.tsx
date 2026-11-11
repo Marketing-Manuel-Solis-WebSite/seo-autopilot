@@ -50,7 +50,7 @@ export default async function DashboardPage() {
     <div className="space-y-6 p-6">
       <PageHeader
         title="Dashboard"
-        description={`${sites.length} sitio${sites.length === 1 ? '' : 's'} · ${sites.filter(s => s.isActive).length} con monitoreo automático`}
+        description={`${sites.length} sitio${sites.length === 1 ? '' : 's'} · monitoreo en vivo cada hora`}
       />
 
       <GlobalMetricsBar sites={sites} />

@@ -5,12 +5,12 @@ import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
 import Link from 'next/link'
 import { isGSCConfigured } from '@/lib/gsc/client'
-import { repoForDomain } from '@/lib/sites/connections'
+import { getLiveWatch, repoForDomain } from '@/lib/sites/connections'
 
 export const dynamic = 'force-dynamic'
 
 export default async function SitesPage() {
-  // All sites, including those with automatic monitoring paused
+  // Every site, with its connections and latest live check
   const sites = await prisma.site.findMany({
     include: {
       audits: { orderBy: { createdAt: 'desc' }, take: 1 },
@@ -19,13 +19,14 @@ export default async function SitesPage() {
     },
     orderBy: [{ isActive: 'desc' }, { name: 'asc' }],
   })
-  const active = sites.filter(s => s.isActive).length
+  const live = await Promise.all(sites.map(s => getLiveWatch(s.id)))
+  const liveCount = live.filter(Boolean).length
 
   return (
     <div className="space-y-6 p-6">
       <PageHeader
         title="Sitios"
-        description={`${sites.length} sitio${sites.length === 1 ? '' : 's'} · ${active} con monitoreo automático`}
+        description={`${sites.length} sitio${sites.length === 1 ? '' : 's'} · ${liveCount} en monitoreo en vivo`}
       >
         <Link href="/settings">
           <Button className="gap-2"><Plus className="h-4 w-4" /> Agregar sitio</Button>
@@ -33,7 +34,7 @@ export default async function SitesPage() {
       </PageHeader>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {sites.map(site => (
+        {sites.map((site, i) => (
           <SiteCard
             key={site.id}
             id={site.id}
@@ -47,7 +48,7 @@ export default async function SitesPage() {
             gscConnected={isGSCConfigured(site)}
             repo={repoForDomain(site.domain)}
             hasResults={site._count.reports > 0}
-            isActive={site.isActive}
+            live={live[i]}
           />
         ))}
       </div>

@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { CheckCircle2, Circle, ExternalLink, PauseCircle } from 'lucide-react'
+import { CheckCircle2, Circle, ExternalLink } from 'lucide-react'
 
 interface SiteCardProps {
   id: string
@@ -19,6 +19,8 @@ interface SiteCardProps {
   /** Results data loaded into the app */
   hasResults?: boolean
   isActive?: boolean
+  /** Latest hourly live check, if any */
+  live?: { minutesAgo: number; online: boolean; responseMs: number | null } | null
 }
 
 function Status({ ok, label }: { ok: boolean; label: string }) {
@@ -42,7 +44,7 @@ export default function SiteCard({
   gscConnected,
   repo,
   hasResults,
-  isActive = true,
+  live,
 }: SiteCardProps) {
   const connected = Boolean(repo || gscConnected || hasResults)
   return (
@@ -69,10 +71,16 @@ export default function SiteCard({
             <div className="space-y-1.5">
               <Status ok={Boolean(repo)} label={repo ? `Repositorio del sitio · ${repo.split('/')[1]}` : 'Repositorio sin conectar'} />
               <Status ok={Boolean(hasResults)} label={hasResults ? 'Search Console y GA4 · marzo a noviembre' : 'Sin datos de resultados'} />
-              <Status ok={Boolean(gscConnected)} label={gscConnected ? 'Search Console en vivo' : 'Search Console en vivo: falta autorizar'} />
-              {!isActive && (
-                <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <PauseCircle className="h-3.5 w-3.5" aria-hidden /> Monitoreo automático en pausa
+              {gscConnected && <Status ok label="Search Console en vivo" />}
+              {live && (
+                <span className="flex items-center gap-1.5 text-xs">
+                  <span className="relative flex h-2.5 w-2.5" aria-hidden>
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-60" style={{ background: live.online ? '#0ca30c' : '#d03b3b' }} />
+                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full" style={{ background: live.online ? '#0ca30c' : '#d03b3b' }} />
+                  </span>
+                  <span className="text-foreground">
+                    Monitoreo en vivo · {live.online ? 'en línea' : 'sin respuesta'} · revisado {live.minutesAgo < 1 ? 'hace un momento' : live.minutesAgo < 60 ? `hace ${live.minutesAgo} min` : `hace ${Math.round(live.minutesAgo / 60)} h`}
+                  </span>
                 </span>
               )}
             </div>

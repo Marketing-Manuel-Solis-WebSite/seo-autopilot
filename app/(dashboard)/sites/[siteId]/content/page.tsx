@@ -16,14 +16,13 @@ export default async function SiteContentPage({
   if (!site) notFound()
 
   const content = await prisma.content.findMany({
-    where: { siteId },
-    orderBy: { createdAt: 'desc' },
-    take: 50,
+    where: { siteId, status: 'published' },
+    orderBy: { publishedAt: 'desc' },
   })
 
   return (
     <div className="space-y-6 p-6">
-      <PageHeader title={`Contenido — ${site.name}`} description={`${content.length} piezas de contenido`} />
+      <PageHeader title={`Contenido — ${site.name}`} description={`${content.length} páginas publicadas en ${site.domain}`} />
       <div className="grid gap-4 sm:grid-cols-2">
         {content.map(c => (
           <ContentCard key={c.id} content={c} />

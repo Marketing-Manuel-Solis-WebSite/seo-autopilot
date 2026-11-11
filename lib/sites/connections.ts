@@ -88,3 +88,40 @@ export async function getLiveGscSummary(site: {
     return { error: (err as Error).message }
   }
 }
+
+export interface LiveWatch {
+  checkedAt: Date
+  minutesAgo: number
+  online: boolean
+  responseMs: number | null
+  httpStatus: number | null
+  protectedByFirewall: boolean
+}
+
+/** Latest hourly live check of a site (cron /api/cron/site-watch), if recent. */
+export async function getLiveWatch(siteId: string): Promise<LiveWatch | null> {
+  const { prisma } = await import('@/lib/prisma')
+  const log = await prisma.monitoringLog.findFirst({
+    where: { siteId, runType: 'site_watch' },
+    orderBy: { createdAt: 'desc' },
+  })
+  if (!log) return null
+  const s = (log.summary ?? {}) as { online?: boolean; responseMs?: number; httpStatus?: number; protectedByFirewall?: boolean }
+  const minutesAgo = Math.max(0, Math.round((Date.now() - log.createdAt.getTime()) / 60000))
+  if (minutesAgo > 180) return null
+  return {
+    checkedAt: log.createdAt,
+    minutesAgo,
+    online: s.online ?? log.status === 'success',
+    responseMs: s.responseMs ?? null,
+    httpStatus: s.httpStatus ?? null,
+    protectedByFirewall: Boolean(s.protectedByFirewall),
+  }
+}
+
+export function agoLabel(minutes: number): string {
+  if (minutes < 1) return 'hace un momento'
+  if (minutes < 60) return `hace ${minutes} min`
+  const h = Math.round(minutes / 60)
+  return `hace ${h} h`
+}

@@ -20,7 +20,7 @@ import {
   Circle,
 } from 'lucide-react'
 import { isGSCConfigured } from '@/lib/gsc/client'
-import { getLiveGscSummary, getRepoActivity, repoForDomain } from '@/lib/sites/connections'
+import { agoLabel, getLiveGscSummary, getLiveWatch, getRepoActivity, repoForDomain } from '@/lib/sites/connections'
 import type { ResultadosData } from '@/lib/resultados/types'
 import { monthLong } from '@/lib/resultados/types'
 import { fmt, pctChange, StatTile } from '@/components/resultados/Stats'
@@ -99,12 +99,13 @@ export default async function SiteDetailPage({
 
   // Connections: repository (read-only, live), Search Console (live once authorized), loaded results
   const repo = repoForDomain(site.domain)
-  const [repoActivity, liveGsc, latestMonthly, resultsCount, overview] = await Promise.all([
+  const [repoActivity, liveGsc, latestMonthly, resultsCount, overview, live] = await Promise.all([
     repo ? getRepoActivity(repo) : Promise.resolve(null),
     getLiveGscSummary(site),
     prisma.report.findFirst({ where: { siteId, reportType: 'mensual_seo' }, orderBy: { period: 'desc' } }),
     prisma.report.count({ where: { siteId, reportType: { in: ['resultados_seo', 'mensual_seo'] } } }),
     prisma.report.findFirst({ where: { siteId, reportType: 'resultados_seo' }, orderBy: { generatedAt: 'desc' } }),
+    getLiveWatch(siteId),
   ])
   const gscConnected = isGSCConfigured(site)
   // Without an audit, show the site's real results instead of an empty "SEO score 0"
@@ -179,18 +180,18 @@ export default async function SiteDetailPage({
               href={resultsCount > 0 ? '/resultados' : undefined}
               hrefLabel="Ver resultados"
             />
-            <ConnectionRow
-              ok={gscConnected}
-              title="Search Console en vivo"
-              detail={gscConnected ? `${site.gscPropertyUrl}` : 'Falta autorizar con la cuenta de Google que administra el sitio'}
-              href={gscConnected ? undefined : `/api/auth/gsc?siteId=${site.id}`}
-              hrefLabel="Conectar Search Console"
-            />
-            <ConnectionRow
-              ok={site.isActive}
-              title="Monitoreo automático"
-              detail={site.isActive ? 'Activo: los crons analizan el sitio' : 'En pausa: los crons no gastan en APIs ni hacen cambios en el sitio'}
-            />
+            {gscConnected && (
+              <ConnectionRow ok title="Search Console en vivo" detail={`${site.gscPropertyUrl}`} />
+            )}
+            {live && (
+              <ConnectionRow
+                ok={live.online}
+                title="Monitoreo en vivo"
+                detail={`${live.online ? 'En línea' : 'Sin respuesta'} · revisado ${agoLabel(live.minutesAgo)}${
+                  live.responseMs !== null ? ` · responde en ${live.responseMs.toLocaleString('es-MX')} ms` : ''
+                }${live.protectedByFirewall ? ' · protegido por el firewall de Vercel' : ''} · cada hora`}
+              />
+            )}
           </CardContent>
         </Card>
 

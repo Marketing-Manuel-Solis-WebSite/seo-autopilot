@@ -37,7 +37,12 @@ const statusLabels: Record<string, string> = {
 const typeLabels: Record<string, string> = {
   blog_post: 'Artículo del blog',
   location_page: 'Página local',
-  landing: 'Landing',
+  landing: 'Landing ciudad × servicio',
+  oficina: 'Oficina',
+  servicio: 'Servicio',
+  abogado: 'Abogado',
+  pagina: 'Página',
+  newsletter: 'Boletín',
 }
 
 const nf = new Intl.NumberFormat('es-MX')
@@ -97,8 +102,10 @@ export default function ContentCard({ content }: ContentCardProps) {
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           {(() => {
             const category = (content.schema as { category?: string } | null | undefined)?.category
-            return category ? (
+            return category && content.contentType === 'blog_post' ? (
               <span>Categoría: <strong>{category}</strong></span>
+            ) : content.publishedUrl ? (
+              <span className="truncate">{content.publishedUrl.replace('https://www.manuelsolis.com', '')}</span>
             ) : (
               <span>Keyword: <strong>{content.targetKeyword}</strong></span>
             )
